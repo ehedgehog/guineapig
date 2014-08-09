@@ -4,7 +4,7 @@ package main
 
 import "github.com/nsf/termbox-go"
 import "fmt"
-import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
+// import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
 
 const (
 	glyph_hbar      = '─'
@@ -19,6 +19,59 @@ const (
 	glyph_lstile    = '├'
 	glyph_rstile    = '┤'
 )
+
+type Panel interface {
+
+}
+
+type Buffer interface {
+
+}
+
+type EventHandler interface {
+	Handle(e *termbox.Event) error
+}
+
+type Editor struct {
+	p Panel
+	b Buffer
+}
+
+type SimpleEventHandler struct {
+	count int
+	content string
+}
+
+func NewSimpleEventHandler() EventHandler {
+	return &SimpleEventHandler{}
+}
+
+func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
+
+	if e.Type == termbox.EventKey {
+		if e.Ch == 0 {
+			if e.Key == termbox.KeySpace {
+				eh.content = string(append([]rune(eh.content), ' '))
+			} else {
+				// what?
+			}
+		} else {
+			eh.content = string(append([]rune(eh.content), e.Ch))
+		}
+	}
+
+
+	w, h := termbox.Size()
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+
+	eh.count += 1
+
+	box(eh.count, eh.content, w/2, 0, w-w/2, h)
+	box(eh.count, eh.content, 0, 0, w/2, h)
+
+	termbox.Flush()
+	return nil
+}
 
 func draw(count int, content string) {
 	w, h := termbox.Size()
@@ -77,6 +130,19 @@ func main() {
 	defer termbox.Close()
 
 	termbox.SetInputMode(termbox.InputMouse)
+
+	eh := NewSimpleEventHandler()
+	eh.Handle(&termbox.Event{})
+
+	for {
+		ev := termbox.PollEvent()
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
+			return
+		}
+		eh.Handle(&ev)
+	}
+
+	return
 
 	count := 0
 	content := ""
