@@ -57,6 +57,7 @@ func (b *SimpleBuffer) Insert(ch rune) {
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
+	box(0, "", 0, 0, 100, 80)
 	w.PutString(1, 1, b.content)
 }
 
