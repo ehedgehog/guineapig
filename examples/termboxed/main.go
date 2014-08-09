@@ -1,9 +1,10 @@
 package main
 
 // import "github.com/limetext/termbox-go"
+
 import "github.com/nsf/termbox-go"
 import "fmt"
-import _ "examples/termboxed/panel"
+import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
 
 const (
 	glyph_hbar      = '─'
@@ -79,9 +80,10 @@ func main() {
 
 	count := 0
 	content := ""
+	mx := 0
 
 	for {
-		draw(count, content)
+		draw(mx, content)
 		count += 1
 		ev := termbox.PollEvent()
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
@@ -94,8 +96,6 @@ func main() {
 			}
 			content = string(append([]rune(content), ch))
 		}
-		if ev.MouseX < 0 {
-			return
-		}
+		mx = ev.MouseX
 	}
 }
