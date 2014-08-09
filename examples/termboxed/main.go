@@ -22,6 +22,7 @@ const (
 
 type Writeable interface {
 	PutString(x, y int, content string)
+	SetCursor(x, y int)
 }
 
 type Panel interface {
@@ -39,12 +40,17 @@ func (s *SimplePanel) PutString(x, y int, content string) {
 	}
 }
 
+func (s *SimplePanel) SetCursor(x, y int) {
+	termbox.SetCursor(x, y)
+}
+
 func NewPanel(x, y int, w, h int) Panel {
 	return &SimplePanel{x, y, w, h}
 }
 
 type Buffer interface {
 	Insert(ch rune)
+	DeleteBack()
 	PutAll(w Writeable)
 }
 
@@ -56,9 +62,14 @@ func (b *SimpleBuffer) Insert(ch rune) {
 	b.content = string(append([]rune(b.content), ch))
 }
 
+func (b *SimpleBuffer) DeleteBack() {
+	b.content = b.content[:len(b.content) - 1]
+}
+
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, "", 0, 0, 100, 80)
 	w.PutString(1, 1, b.content)
+	w.SetCursor(len(b.content) + 1, 1)
 }
 
 func NewBuffer() Buffer {
@@ -100,8 +111,12 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 			if e.Key == termbox.KeySpace {
 				eh.content = string(append([]rune(eh.content), ' '))
 				eh.e.b.Insert(' ')
+			} else if e.Key == termbox.KeyBackspace2 {
+				eh.e.b.DeleteBack()
 			} else {
-				// what?
+				b := eh.e.b
+				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
+				for _, ch := range report { b.Insert(rune(ch)) }
 			}
 		} else {
 			eh.content = string(append([]rune(eh.content), e.Ch))
