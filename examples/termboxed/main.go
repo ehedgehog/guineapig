@@ -20,30 +20,76 @@ const (
 	glyph_rstile    = '┤'
 )
 
-type Panel interface {
+type Writeable interface {
+	PutString(x, y int, content string)
+}
 
+type Panel interface {
+	Writeable
+}
+
+type SimplePanel struct {
+	x, y int
+	w, h int
+}
+
+func (s *SimplePanel) PutString(x, y int, content string) {
+	for i, ch := range content {
+		termbox.SetCell(x + i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
+	}
+}
+
+func NewPanel(x, y int, w, h int) Panel {
+	return &SimplePanel{x, y, w, h}
 }
 
 type Buffer interface {
+	Insert(ch rune)
+	PutAll(w Writeable)
+}
 
+type SimpleBuffer struct {
+	content string
+}
+
+func (b *SimpleBuffer) Insert(ch rune) {
+	b.content = string(append([]rune(b.content), ch))
+}
+
+func (b *SimpleBuffer) PutAll(w Writeable) {
+	w.PutString(1, 1, b.content)
+}
+
+func NewBuffer() Buffer {
+	return &SimpleBuffer{}
 }
 
 type EventHandler interface {
 	Handle(e *termbox.Event) error
 }
 
+type Loc struct {
+	X, Y int
+}
+
 type Editor struct {
 	p Panel
 	b Buffer
+	l Loc
 }
 
 type SimpleEventHandler struct {
+	e *Editor
 	count int
 	content string
 }
 
-func NewSimpleEventHandler() EventHandler {
-	return &SimpleEventHandler{}
+func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
+	p := NewPanel(x, y, w, h)
+	b := NewBuffer() 
+	l := Loc{0, 0}
+	e := &Editor{p, b, l}
+	return &SimpleEventHandler{e, 0, ""}
 }
 
 func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
@@ -52,11 +98,13 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 		if e.Ch == 0 {
 			if e.Key == termbox.KeySpace {
 				eh.content = string(append([]rune(eh.content), ' '))
+				eh.e.b.Insert(' ')
 			} else {
 				// what?
 			}
 		} else {
 			eh.content = string(append([]rune(eh.content), e.Ch))
+			eh.e.b.Insert(e.Ch)
 		}
 	}
 
@@ -65,9 +113,14 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
 	eh.count += 1
+	_, _ = w, h
 
-	box(eh.count, eh.content, w/2, 0, w-w/2, h)
-	box(eh.count, eh.content, 0, 0, w/2, h)
+	eh.e.b.PutAll(eh.e.p)
+/*
+
+	box(eh.count, eh.e.b.content, w/2, 0, w-w/2, h)
+	box(eh.count, eh.e.b.content, 0, 0, w/2, h)
+*/
 
 	termbox.Flush()
 	return nil
@@ -131,7 +184,7 @@ func main() {
 
 	termbox.SetInputMode(termbox.InputMouse)
 
-	eh := NewSimpleEventHandler()
+	eh := NewSimpleEventHandler(10, 10, 100, 80)
 	eh.Handle(&termbox.Event{})
 
 	for {
