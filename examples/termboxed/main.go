@@ -4,6 +4,7 @@ package main
 
 import "github.com/nsf/termbox-go"
 import "fmt"
+
 // import "log"
 
 // import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
@@ -38,7 +39,7 @@ type SimplePanel struct {
 
 func (s *SimplePanel) PutString(x, y int, content string) {
 	for i, ch := range content {
-		termbox.SetCell(x + i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
+		termbox.SetCell(x+i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
 	}
 }
 
@@ -59,13 +60,13 @@ type Buffer interface {
 }
 
 type SimpleBuffer struct {
-	content string
+	content  string
 	position int
 }
 
 func (b *SimpleBuffer) Insert(ch rune) {
 	loc := b.position
-	runes :=  []rune(b.content)
+	runes := []rune(b.content)
 
 	A := []rune{}
 	B := append(A, runes[0:loc]...)
@@ -77,22 +78,28 @@ func (b *SimpleBuffer) Insert(ch rune) {
 }
 
 func (b *SimpleBuffer) BackOne() {
-	if b.position > 0 { b.position -= 1 }
+	if b.position > 0 {
+		b.position -= 1
+	}
 }
 
 func (b *SimpleBuffer) ForwardOne() {
-	if b.position < len(b.content) { b.position += 1 }
+	if b.position < len(b.content) {
+		b.position += 1
+	}
 }
 
 func (b *SimpleBuffer) DeleteBack() {
-	b.content = b.content[:len(b.content) - 1]
-	b.BackOne()
+	if b.position > 0 {
+		b.content = b.content[:len(b.content)-1]
+		b.BackOne()
+	}
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, "", 0, 0, 100, 80)
 	w.PutString(1, 1, b.content)
-	w.SetCursor(b.position + 1, 1)
+	w.SetCursor(b.position+1, 1)
 }
 
 func NewBuffer() Buffer {
@@ -114,14 +121,14 @@ type Editor struct {
 }
 
 type SimpleEventHandler struct {
-	e *Editor
-	count int
+	e       *Editor
+	count   int
 	content string
 }
 
 func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
 	p := NewPanel(x, y, w, h)
-	b := NewBuffer() 
+	b := NewBuffer()
 	l := Loc{0, 0}
 	e := &Editor{p, b, l}
 	return &SimpleEventHandler{e, 0, ""}
@@ -143,14 +150,15 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 			} else {
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
-				for _, ch := range report { b.Insert(rune(ch)) }
+				for _, ch := range report {
+					b.Insert(rune(ch))
+				}
 			}
 		} else {
 			eh.content = string(append([]rune(eh.content), e.Ch))
 			eh.e.b.Insert(e.Ch)
 		}
 	}
-
 
 	w, h := termbox.Size()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
@@ -159,11 +167,11 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	_, _ = w, h
 
 	eh.e.b.PutAll(eh.e.p)
-/*
+	/*
 
-	box(eh.count, eh.e.b.content, w/2, 0, w-w/2, h)
-	box(eh.count, eh.e.b.content, 0, 0, w/2, h)
-*/
+		box(eh.count, eh.e.b.content, w/2, 0, w-w/2, h)
+		box(eh.count, eh.e.b.content, 0, 0, w/2, h)
+	*/
 
 	termbox.Flush()
 	return nil
