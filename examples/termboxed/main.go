@@ -4,6 +4,8 @@ package main
 
 import "github.com/nsf/termbox-go"
 import "fmt"
+// import "log"
+
 // import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
 
 const (
@@ -51,25 +53,46 @@ func NewPanel(x, y int, w, h int) Panel {
 type Buffer interface {
 	Insert(ch rune)
 	DeleteBack()
+	BackOne()
+	ForwardOne()
 	PutAll(w Writeable)
 }
 
 type SimpleBuffer struct {
 	content string
+	position int
 }
 
 func (b *SimpleBuffer) Insert(ch rune) {
-	b.content = string(append([]rune(b.content), ch))
+	loc := b.position
+	runes :=  []rune(b.content)
+
+	A := []rune{}
+	B := append(A, runes[0:loc]...)
+	C := append(B, ch)
+	D := append(C, runes[loc:]...)
+
+	b.position += 1
+	b.content = string(D)
+}
+
+func (b *SimpleBuffer) BackOne() {
+	if b.position > 0 { b.position -= 1 }
+}
+
+func (b *SimpleBuffer) ForwardOne() {
+	if b.position < len(b.content) { b.position += 1 }
 }
 
 func (b *SimpleBuffer) DeleteBack() {
 	b.content = b.content[:len(b.content) - 1]
+	b.BackOne()
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, "", 0, 0, 100, 80)
 	w.PutString(1, 1, b.content)
-	w.SetCursor(len(b.content) + 1, 1)
+	w.SetCursor(b.position + 1, 1)
 }
 
 func NewBuffer() Buffer {
@@ -113,6 +136,10 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.Insert(' ')
 			} else if e.Key == termbox.KeyBackspace2 {
 				eh.e.b.DeleteBack()
+			} else if e.Key == termbox.KeyArrowLeft {
+				eh.e.b.BackOne()
+			} else if e.Key == termbox.KeyArrowRight {
+				eh.e.b.ForwardOne()
 			} else {
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
