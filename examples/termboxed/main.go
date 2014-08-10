@@ -55,6 +55,8 @@ type Buffer interface {
 	Insert(ch rune)
 	DeleteBack()
 	BackOne()
+	UpOne()
+	DownOne()
 	ForwardOne()
 	Return()
 	PutAll(w Writeable)
@@ -66,7 +68,21 @@ type SimpleBuffer struct {
 	col     int
 }
 
+func (b *SimpleBuffer) makeRoom() {
+	if b.line >= len(b.content) {
+		content := make([]string, b.line+1)
+		copy(content, b.content)
+		b.content = content
+	}
+	for b.col > len(b.content[b.line]) {
+		b.content[b.line] += "        "
+	}
+}
+
 func (b *SimpleBuffer) Insert(ch rune) {
+
+	b.makeRoom()
+
 	loc := b.col
 	runes := []rune(b.content[b.line])
 
@@ -80,12 +96,30 @@ func (b *SimpleBuffer) Insert(ch rune) {
 }
 
 func (b *SimpleBuffer) Return() {
+
+	b.makeRoom()
+
 	lines := append(b.content, "")
+
+	right := lines[b.line][b.col:]
+	left := lines[b.line][0:b.col]
+
 	copy(lines[b.line+1:], lines[b.line:])
-	lines[b.line+1] = ""
+	lines[b.line] = left
+	lines[b.line+1] = right
 	b.line += 1
 	b.col = 0
 	b.content = lines
+}
+
+func (b *SimpleBuffer) UpOne() {
+	if b.line > 0 {
+		b.line -= 1
+	}
+}
+
+func (b *SimpleBuffer) DownOne() {
+	b.line += 1
 }
 
 func (b *SimpleBuffer) BackOne() {
@@ -95,12 +129,11 @@ func (b *SimpleBuffer) BackOne() {
 }
 
 func (b *SimpleBuffer) ForwardOne() {
-	if b.col < len(b.content[b.line]) {
-		b.col += 1
-	}
+	b.col += 1
 }
 
 func (b *SimpleBuffer) DeleteBack() {
+	b.makeRoom()
 	if b.col > 0 {
 		b.content[b.line] = b.content[b.line][:len(b.content[b.line])-1]
 		b.BackOne()
@@ -163,6 +196,10 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.Return()
 			case termbox.KeyArrowRight:
 				eh.e.b.ForwardOne()
+			case termbox.KeyArrowUp:
+				eh.e.b.UpOne()
+			case termbox.KeyArrowDown:
+				eh.e.b.DownOne()
 			default:
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
