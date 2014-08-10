@@ -80,7 +80,12 @@ func (b *SimpleBuffer) Insert(ch rune) {
 }
 
 func (b *SimpleBuffer) Return() {
-
+	lines := append(b.content, "")
+	copy(lines[b.line+1:], lines[b.line:])
+	lines[b.line+1] = ""
+	b.line += 1
+	b.col = 0
+	b.content = lines
 }
 
 func (b *SimpleBuffer) BackOne() {
