@@ -56,54 +56,62 @@ type Buffer interface {
 	DeleteBack()
 	BackOne()
 	ForwardOne()
+	Return()
 	PutAll(w Writeable)
 }
 
 type SimpleBuffer struct {
-	content  string
-	position int
+	content []string
+	line    int
+	col     int
 }
 
 func (b *SimpleBuffer) Insert(ch rune) {
-	loc := b.position
-	runes := []rune(b.content)
+	loc := b.col
+	runes := []rune(b.content[b.line])
 
 	A := []rune{}
 	B := append(A, runes[0:loc]...)
 	C := append(B, ch)
 	D := append(C, runes[loc:]...)
 
-	b.position += 1
-	b.content = string(D)
+	b.col += 1
+	b.content[b.line] = string(D)
+}
+
+func (b *SimpleBuffer) Return() {
+
 }
 
 func (b *SimpleBuffer) BackOne() {
-	if b.position > 0 {
-		b.position -= 1
+	if b.col > 0 {
+		b.col -= 1
 	}
 }
 
 func (b *SimpleBuffer) ForwardOne() {
-	if b.position < len(b.content) {
-		b.position += 1
+	if b.col < len(b.content[b.line]) {
+		b.col += 1
 	}
 }
 
 func (b *SimpleBuffer) DeleteBack() {
-	if b.position > 0 {
-		b.content = b.content[:len(b.content)-1]
+	if b.col > 0 {
+		b.content[b.line] = b.content[b.line][:len(b.content[b.line])-1]
 		b.BackOne()
 	}
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, "", 0, 0, 100, 80)
-	w.PutString(1, 1, b.content)
-	w.SetCursor(b.position+1, 1)
+	for i, line := range b.content {
+		w.PutString(1, i+1, line)
+	}
+	w.SetCursor(b.col+1, b.line+1)
 }
 
 func NewBuffer() Buffer {
-	return &SimpleBuffer{}
+	return &SimpleBuffer{content: []string{""}}
 }
 
 type EventHandler interface {
@@ -138,16 +146,19 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 
 	if e.Type == termbox.EventKey {
 		if e.Ch == 0 {
-			if e.Key == termbox.KeySpace {
+			switch e.Key {
+			case termbox.KeySpace:
 				eh.content = string(append([]rune(eh.content), ' '))
 				eh.e.b.Insert(' ')
-			} else if e.Key == termbox.KeyBackspace2 {
+			case termbox.KeyBackspace2:
 				eh.e.b.DeleteBack()
-			} else if e.Key == termbox.KeyArrowLeft {
+			case termbox.KeyArrowLeft:
 				eh.e.b.BackOne()
-			} else if e.Key == termbox.KeyArrowRight {
+			case termbox.KeyEnter:
+				eh.e.b.Return()
+			case termbox.KeyArrowRight:
 				eh.e.b.ForwardOne()
-			} else {
+			default:
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
 				for _, ch := range report {
