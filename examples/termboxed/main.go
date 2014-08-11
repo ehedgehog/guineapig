@@ -61,12 +61,15 @@ type Buffer interface {
 	ForwardOne()
 	Return()
 	PutAll(w Writeable)
+	ScrollUp()
+	ScrollDown()
 }
 
 type SimpleBuffer struct {
-	content []string
-	line    int
-	col     int
+	content        []string
+	line           int
+	col            int
+	verticalOffset int
 }
 
 func (b *SimpleBuffer) makeRoom() {
@@ -78,6 +81,16 @@ func (b *SimpleBuffer) makeRoom() {
 	for b.col > len(b.content[b.line]) {
 		b.content[b.line] += "        "
 	}
+}
+
+func (b *SimpleBuffer) ScrollUp() {
+	if b.verticalOffset > 0 {
+		b.verticalOffset -= 1
+	}
+}
+
+func (b *SimpleBuffer) ScrollDown() {
+	b.verticalOffset += 1
 }
 
 func (b *SimpleBuffer) Insert(ch rune) {
@@ -116,6 +129,9 @@ func (b *SimpleBuffer) Return() {
 func (b *SimpleBuffer) UpOne() {
 	if b.line > 0 {
 		b.line -= 1
+		if b.line == b.verticalOffset && b.verticalOffset > 0 {
+			b.verticalOffset -= 1
+		}
 	}
 }
 
@@ -152,10 +168,16 @@ func (b *SimpleBuffer) DeleteForward() {
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, "", 0, 0, 100, 80)
-	for i, line := range b.content {
-		w.PutString(1, i+1, line)
+	limit := 100
+	if len(b.content) < limit {
+		limit = len(b.content)
 	}
-	w.SetCursor(b.col+1, b.line+1)
+	line := 1
+	for i := b.verticalOffset; i < limit; i += 1 {
+		w.PutString(1, line, b.content[i])
+		line += 1
+	}
+	w.SetCursor(b.col+1, b.line+1-b.verticalOffset)
 }
 
 func NewBuffer() Buffer {
@@ -212,6 +234,10 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.UpOne()
 			case termbox.KeyArrowDown:
 				eh.e.b.DownOne()
+			case termbox.KeyF1:
+				eh.e.b.ScrollUp()
+			case termbox.KeyF2:
+				eh.e.b.ScrollDown()
 			default:
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
