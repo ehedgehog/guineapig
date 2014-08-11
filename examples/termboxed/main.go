@@ -54,6 +54,7 @@ func NewPanel(x, y int, w, h int) Panel {
 type Buffer interface {
 	Insert(ch rune)
 	DeleteBack()
+	DeleteForward()
 	BackOne()
 	UpOne()
 	DownOne()
@@ -135,9 +136,18 @@ func (b *SimpleBuffer) ForwardOne() {
 func (b *SimpleBuffer) DeleteBack() {
 	b.makeRoom()
 	if b.col > 0 {
-		b.content[b.line] = b.content[b.line][:len(b.content[b.line])-1]
+		content := b.content[b.line]
+		before := content[0 : b.col-1]
+		after := content[b.col:]
+		newContent := before + after
+		b.content[b.line] = newContent
 		b.BackOne()
 	}
+}
+
+func (b *SimpleBuffer) DeleteForward() {
+	b.ForwardOne()
+	b.DeleteBack()
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
@@ -190,6 +200,8 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.Insert(' ')
 			case termbox.KeyBackspace2:
 				eh.e.b.DeleteBack()
+			case termbox.KeyDelete:
+				eh.e.b.DeleteForward()
 			case termbox.KeyArrowLeft:
 				eh.e.b.BackOne()
 			case termbox.KeyEnter:
