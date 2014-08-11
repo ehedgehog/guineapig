@@ -232,12 +232,6 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	_, _ = w, h
 
 	eh.e.b.PutAll(eh.e.p)
-	/*
-
-		box(eh.count, eh.e.b.content, w/2, 0, w-w/2, h)
-		box(eh.count, eh.e.b.content, 0, 0, w/2, h)
-	*/
-
 	termbox.Flush()
 	return nil
 }
@@ -299,7 +293,6 @@ func main() {
 	defer termbox.Close()
 
 	termbox.SetInputMode(termbox.InputMouse)
-
 	eh := NewSimpleEventHandler(10, 10, 100, 80)
 	eh.Handle(&termbox.Event{})
 
@@ -309,28 +302,5 @@ func main() {
 			return
 		}
 		eh.Handle(&ev)
-	}
-
-	return
-
-	count := 0
-	content := ""
-	mx := 0
-
-	for {
-		draw(mx, content)
-		count += 1
-		ev := termbox.PollEvent()
-		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
-			return
-		}
-		if ev.Type == termbox.EventKey {
-			ch := ev.Ch
-			if ch == 0 {
-				ch = ' '
-			}
-			content = string(append([]rune(content), ch))
-		}
-		mx = ev.MouseX
 	}
 }
