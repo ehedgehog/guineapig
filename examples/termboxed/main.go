@@ -236,16 +236,6 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	return nil
 }
 
-func draw(count int, content string) {
-	w, h := termbox.Size()
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-
-	box(count, content, w/2, 0, w-w/2, h)
-	box(count, content, 0, 0, w/2, h)
-
-	termbox.Flush()
-}
-
 func box(count int, content string, xbase, ybase int, w, h int) {
 
 	for x := 1; x < w-1; x += 1 {
