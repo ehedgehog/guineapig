@@ -189,7 +189,7 @@ func min(x, y int) int {
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
-	box(0, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), 0, 0, b.width, b.height)
+	box(fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), 0, 0, b.width, b.height)
 
 	vertical := b.height - 2
 	limit := min(vertical, len(b.content)-b.verticalOffset)
@@ -229,8 +229,7 @@ type Editor struct {
 }
 
 type SimpleEventHandler struct {
-	e     *Editor
-	count int
+	e *Editor
 }
 
 func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
@@ -238,7 +237,7 @@ func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
 	b := NewBuffer(w, h)
 	l := Loc{0, 0}
 	e := &Editor{p, b, l}
-	return &SimpleEventHandler{e, 0}
+	return &SimpleEventHandler{e}
 }
 
 func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
@@ -285,7 +284,6 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	w, h := termbox.Size()
 	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 
-	eh.count += 1
 	_, _ = w, h
 
 	eh.e.b.PutAll(eh.e.p)
@@ -293,7 +291,7 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	return nil
 }
 
-func box(count int, content string, xbase, ybase int, w, h int) {
+func box(content string, xbase, ybase int, w, h int) {
 
 	for x := 1; x < w-1; x += 1 {
 		for _, y := range []int{0, h - 1} {
