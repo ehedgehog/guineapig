@@ -71,6 +71,8 @@ type SimpleBuffer struct {
 	line           int
 	col            int
 	verticalOffset int
+	width          int
+	height         int
 }
 
 func (b *SimpleBuffer) makeRoom() {
@@ -144,6 +146,9 @@ func (b *SimpleBuffer) UpOne() {
 
 func (b *SimpleBuffer) DownOne() {
 	b.line += 1
+	if b.line-b.verticalOffset > b.height-3 {
+		b.verticalOffset += 1
+	}
 }
 
 func (b *SimpleBuffer) BackOne() {
@@ -174,8 +179,8 @@ func (b *SimpleBuffer) DeleteForward() {
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
-	box(0, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v)", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset), 0, 0, 100, 20)
-	limit := 100
+	box(0, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), 0, 0, b.width, b.height)
+	limit := b.height - 2
 	if len(b.content) < limit {
 		limit = len(b.content)
 	}
@@ -187,8 +192,8 @@ func (b *SimpleBuffer) PutAll(w Writeable) {
 	w.SetCursor(b.col+1, b.line+1-b.verticalOffset)
 }
 
-func NewBuffer() Buffer {
-	return &SimpleBuffer{content: []string{""}}
+func NewBuffer(w, h int) Buffer {
+	return &SimpleBuffer{content: []string{""}, width: w, height: h}
 }
 
 type EventHandler interface {
@@ -213,7 +218,7 @@ type SimpleEventHandler struct {
 
 func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
 	p := NewPanel(x, y, w, h)
-	b := NewBuffer()
+	b := NewBuffer(w, h)
 	l := Loc{0, 0}
 	e := &Editor{p, b, l}
 	return &SimpleEventHandler{e, 0, ""}
@@ -306,13 +311,14 @@ func main() {
 	}
 	defer termbox.Close()
 
-	termbox.SetInputMode(termbox.InputMouse)
-	eh := NewSimpleEventHandler(10, 10, 100, 80)
+	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
+	w, h := termbox.Size()
+	eh := NewSimpleEventHandler(10, 10, w, h)
 	eh.Handle(&termbox.Event{})
 
 	for {
 		ev := termbox.PollEvent()
-		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyEsc {
+		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
 			return
 		}
 		eh.Handle(&ev)
