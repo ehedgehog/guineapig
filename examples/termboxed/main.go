@@ -135,10 +135,10 @@ func (b *SimpleBuffer) Return() {
 
 func (b *SimpleBuffer) UpOne() {
 	if b.line > 0 {
-		b.line -= 1
 		if b.line == b.verticalOffset && b.verticalOffset > 0 {
 			b.verticalOffset -= 1
 		}
+		b.line -= 1
 	}
 }
 
@@ -174,7 +174,7 @@ func (b *SimpleBuffer) DeleteForward() {
 }
 
 func (b *SimpleBuffer) PutAll(w Writeable) {
-	box(0, "", 0, 0, 100, 80)
+	box(0, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v)", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset), 0, 0, 100, 20)
 	limit := 100
 	if len(b.content) < limit {
 		limit = len(b.content)
@@ -285,18 +285,7 @@ func box(count int, content string, xbase, ybase int, w, h int) {
 		}
 	}
 
-	for i, ch := range []rune(content) {
-		termbox.SetCell(xbase+1+i, ybase+1, ch, termbox.ColorDefault, termbox.ColorDefault)
-	}
-
-	termbox.SetCursor(xbase+1+len([]rune(content)), ybase+1)
-
-	x := []rune(content)
-	if len(x) > 0 {
-		count = int(x[len(x)-1])
-	}
-
-	county := []rune(fmt.Sprintf("─┤ %d ", count))
+	county := []rune(fmt.Sprintf("─┤ %v ", content))
 	for i, r := range county {
 		termbox.SetCell(xbase+i+1, ybase, r, termbox.ColorDefault, termbox.ColorDefault)
 	}
