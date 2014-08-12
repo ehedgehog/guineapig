@@ -63,6 +63,7 @@ type Buffer interface {
 	PutAll(w Writeable)
 	ScrollUp()
 	ScrollDown()
+	ScrollTop()
 }
 
 type SimpleBuffer struct {
@@ -86,11 +87,17 @@ func (b *SimpleBuffer) makeRoom() {
 func (b *SimpleBuffer) ScrollUp() {
 	if b.verticalOffset > 0 {
 		b.verticalOffset -= 1
+		b.line -= 1
 	}
 }
 
 func (b *SimpleBuffer) ScrollDown() {
 	b.verticalOffset += 1
+}
+
+func (b *SimpleBuffer) ScrollTop() {
+	b.line = 0
+	b.verticalOffset = 0
 }
 
 func (b *SimpleBuffer) Insert(ch rune) {
@@ -238,6 +245,8 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.ScrollUp()
 			case termbox.KeyF2:
 				eh.e.b.ScrollDown()
+			case termbox.KeyF3:
+				eh.e.b.ScrollTop()
 			default:
 				b := eh.e.b
 				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
