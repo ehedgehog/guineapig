@@ -66,6 +66,8 @@ type Buffer interface {
 	ScrollTop()
 }
 
+// SimpleBuffer is a simplistic implementation of
+// Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
 	content        []string
 	line           int
@@ -130,7 +132,7 @@ func (b *SimpleBuffer) Return() {
 	copy(lines[b.line+1:], lines[b.line:])
 	lines[b.line] = left
 	lines[b.line+1] = right
-	b.line += 1
+	b.DownOne() // b.line += 1
 	b.col = 0
 	b.content = lines
 }
@@ -178,16 +180,32 @@ func (b *SimpleBuffer) DeleteForward() {
 	b.DeleteBack()
 }
 
+func min(x, y int) int {
+	if x < y {
+		return x
+	} else {
+		return y
+	}
+}
+
 func (b *SimpleBuffer) PutAll(w Writeable) {
 	box(0, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), 0, 0, b.width, b.height)
-	limit := b.height - 2
-	if len(b.content) < limit {
-		limit = len(b.content)
-	}
-	line := 1
-	for i := b.verticalOffset; i < limit; i += 1 {
-		w.PutString(1, line, b.content[i])
-		line += 1
+
+	vertical := b.height - 2
+	limit := min(vertical, len(b.content)-b.verticalOffset)
+
+	w.PutString(80, 0, fmt.Sprintf(" range [%v, %v] ", b.verticalOffset, limit))
+
+	wLine := 1
+	bLine := b.verticalOffset
+
+	for {
+		w.PutString(1, wLine, b.content[bLine])
+		wLine += 1
+		bLine += 1
+		if bLine == len(b.content) || wLine > vertical {
+			break
+		}
 	}
 	w.SetCursor(b.col+1, b.line+1-b.verticalOffset)
 }
