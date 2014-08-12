@@ -211,9 +211,8 @@ type Editor struct {
 }
 
 type SimpleEventHandler struct {
-	e       *Editor
-	count   int
-	content string
+	e     *Editor
+	count int
 }
 
 func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
@@ -221,7 +220,7 @@ func NewSimpleEventHandler(x, y int, w, h int) EventHandler {
 	b := NewBuffer(w, h)
 	l := Loc{0, 0}
 	e := &Editor{p, b, l}
-	return &SimpleEventHandler{e, 0, ""}
+	return &SimpleEventHandler{e, 0}
 }
 
 func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
@@ -229,8 +228,9 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 	if e.Type == termbox.EventKey {
 		if e.Ch == 0 {
 			switch e.Key {
+			case 0:
+				// nothing
 			case termbox.KeySpace:
-				eh.content = string(append([]rune(eh.content), ' '))
 				eh.e.b.Insert(' ')
 			case termbox.KeyBackspace2:
 				eh.e.b.DeleteBack()
@@ -260,7 +260,6 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				}
 			}
 		} else {
-			eh.content = string(append([]rune(eh.content), e.Ch))
 			eh.e.b.Insert(e.Ch)
 		}
 	}
