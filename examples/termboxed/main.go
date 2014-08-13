@@ -271,7 +271,7 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 				eh.e.b.ScrollTop()
 			default:
 				b := eh.e.b
-				report := fmt.Sprintf("<key: %#d>", uint(e.Key))
+				report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 				for _, ch := range report {
 					b.Insert(rune(ch))
 				}
@@ -279,6 +279,13 @@ func (eh *SimpleEventHandler) Handle(e *termbox.Event) error {
 		} else {
 			eh.e.b.Insert(e.Ch)
 		}
+	} else if e.Type == termbox.EventMouse {
+		b := eh.e.b
+		report := fmt.Sprintf("<mouse: %v, %v>\n", e.MouseX, e.MouseY)
+		for _, ch := range report {
+			b.Insert(rune(ch))
+		}
+
 	}
 
 	w, h := termbox.Size()
