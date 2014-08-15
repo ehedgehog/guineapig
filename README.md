@@ -1,4 +1,5 @@
 guineapig
 =========
 
-collection of Go examples and experiments
+Collection of Go examples and experiments. Preliminary state.
+If it doesn't say it's ready, it isn't ready.
