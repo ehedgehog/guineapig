@@ -145,7 +145,19 @@ func min(x, y int) int {
 }
 
 func (b *SimpleBuffer) PutAll(w screen.Writeable) {
-	draw.Box(fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), 0, 0, b.width, b.height)
+
+	loc := draw.XY{0, 0}
+	size := draw.WH{b.width, b.height}
+
+	length := len(b.content)
+	if b.line > length {
+		length = b.line
+	}
+	off := draw.Scrolling{length, b.line}
+
+	info := draw.BoxInfo{loc, size, off}
+
+	draw.Box(fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), info)
 
 	vertical := b.height - 2
 	limit := min(vertical, len(b.content)-b.verticalOffset)
@@ -154,12 +166,16 @@ func (b *SimpleBuffer) PutAll(w screen.Writeable) {
 
 	wLine := 1
 	bLine := b.verticalOffset
-
+	content := b.content
 	for {
-		w.PutString(1, wLine, b.content[bLine])
+		if bLine >= 0 && bLine < len(content) {
+			w.PutString(1, wLine, content[bLine])
+		} else {
+			// w.PutString(1, wLine, "?")
+		}
 		wLine += 1
 		bLine += 1
-		if bLine == len(b.content) || wLine > vertical {
+		if bLine == len(content) || wLine > vertical {
 			break
 		}
 	}
