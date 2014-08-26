@@ -15,14 +15,13 @@ import "fmt"
 // import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
 
 type SimplePanel struct {
-	x, y int
-	w, h int
+	outer screen.Panel
+	x, y  int
+	w, h  int
 }
 
 func (s *SimplePanel) PutString(x, y int, content string) {
-	for i, ch := range content {
-		termbox.SetCell(x+i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
-	}
+	s.outer.PutString(s.x+x, s.y+y, content)
 }
 
 func (s *SimplePanel) Resize(x, y, w, h int) {
@@ -34,8 +33,12 @@ func (s *SimplePanel) SetCursor(x, y int) {
 	termbox.SetCursor(x, y)
 }
 
-func NewPanel(x, y int, w, h int) screen.Panel {
-	return &SimplePanel{x, y, w, h}
+func (s *SimplePanel) SetCell(x, y int, ch rune, a, b termbox.Attribute) {
+	s.outer.SetCell(x+s.x, y+s.y, ch, a, b)
+}
+
+func NewPanel(outer screen.Panel, x, y int, w, h int) screen.Panel {
+	return &SimplePanel{outer, x, y, w, h}
 }
 
 type EventHandler interface {
@@ -58,8 +61,41 @@ type EditorEventHandler struct {
 	e *Editor
 }
 
+func (s *ScreenWritable) PutString(x, y int, content string) {
+	for i, ch := range content {
+		s.SetCell(x+i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
+	}
+}
+
+func (s *ScreenWritable) Resize(x, y, w, h int) {
+	s.x, s.y = x, y
+	s.w, s.h = w, h
+}
+
+func (s *ScreenWritable) SetCursor(x, y int) {
+	termbox.SetCursor(x, y)
+}
+
+var k = 0
+
+func (s *ScreenWritable) SetCell(x, y int, ch rune, a, b termbox.Attribute) {
+	// 	termbox.SetCell(x+s.x, y+s.y, ch, a, b)
+	// draw.Say(15, 10+k*2, fmt.Sprintf("s.x = %v", s.x))
+	termbox.SetCell(x+0, y, ch, a, b)
+	k += 1
+}
+
+type ScreenWritable struct {
+	x, y, w, h int
+}
+
+func NewScreenWriteable(x, y, w, h int) screen.Writeable {
+	return &ScreenWritable{x, y, w, h}
+}
+
 func NewEditorEventHandler(x, y int, w, h int) EventHandler {
-	p := NewPanel(x, y, w, h)
+	ws := NewScreenWriteable(x, y, w, h)
+	p := NewPanel(ws, x, y, w, h)
 	b := buffer.New(w, h)
 	l := Loc{0, 0}
 	e := &Editor{p, b, l}
@@ -110,8 +146,6 @@ func (eh *EditorEventHandler) HandleKey(e *termbox.Event) error {
 	}
 
 	w, h := termbox.Size()
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-
 	_, _ = w, h
 
 	eh.e.b.PutAll(eh.e.p)
@@ -124,12 +158,9 @@ func (eh *EditorEventHandler) HandleMouse(e *termbox.Event) error {
 	report := fmt.Sprintf("<mouse: %v, %v>\n", e.MouseX, e.MouseY)
 	for _, ch := range report {
 		b.Insert(rune(ch))
-
 	}
 
 	w, h := termbox.Size()
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-
 	_, _ = w, h
 
 	eh.e.b.PutAll(eh.e.p)
@@ -137,6 +168,7 @@ func (eh *EditorEventHandler) HandleMouse(e *termbox.Event) error {
 }
 
 func Handle(eh EventHandler, e *termbox.Event) {
+	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
 	if e.Type == termbox.EventMouse {
 		eh.HandleMouse(e)
 	}
@@ -184,13 +216,15 @@ func main() {
 	defer termbox.Close()
 
 	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
+
 	w, h := termbox.Size()
 
 	ehA := NewEditorEventHandler(0, 0, w/2, h)
-	ehB := NewEditorEventHandler(0, 0, w/2, h)
+	ehB := NewEditorEventHandler(w-w/2, 0, w/2, h)
 	eh := NewSideBySide(ehA, ehB)
 
-	Handle(eh, &termbox.Event{})
+	// Handle(eh, &termbox.Event{})
+	eh.HandleResize(0, 0, w, h)
 
 	for {
 		ev := termbox.PollEvent()

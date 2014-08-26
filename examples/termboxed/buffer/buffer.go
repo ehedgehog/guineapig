@@ -157,7 +157,7 @@ func (b *SimpleBuffer) PutAll(w screen.Writeable) {
 
 	info := draw.BoxInfo{loc, size, off}
 
-	draw.Box(fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), info)
+	draw.Box(w, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), info)
 
 	vertical := b.height - 2
 	limit := min(vertical, len(b.content)-b.verticalOffset)

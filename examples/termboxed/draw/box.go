@@ -3,6 +3,7 @@ package draw
 import (
 	"fmt"
 
+	"github.com/ehedgehog/guineapig/examples/termboxed/screen"
 	"github.com/nsf/termbox-go"
 )
 
@@ -39,34 +40,34 @@ type BoxInfo struct {
 	Off  Scrolling
 }
 
-func Box(content string, b BoxInfo) {
+func Box(sw screen.Writeable, content string, b BoxInfo) {
 
 	xbase, ybase := b.Loc.X, b.Loc.Y
 	w, h := b.Size.W, b.Size.H
 
 	for x := 1; x < w-1; x += 1 {
 		for _, y := range []int{0, h - 1} {
-			termbox.SetCell(xbase+x, ybase+y, glyph_hbar, termbox.ColorDefault, termbox.ColorDefault)
+			sw.SetCell(xbase+x, ybase+y, glyph_hbar, termbox.ColorDefault, termbox.ColorDefault)
 		}
 	}
 
 	for y := 1; y < h-1; y += 1 {
 		for _, x := range []int{0, w - 1} {
-			termbox.SetCell(xbase+x, ybase+y, glyph_vbar, termbox.ColorDefault, termbox.ColorDefault)
+			sw.SetCell(xbase+x, ybase+y, glyph_vbar, termbox.ColorDefault, termbox.ColorDefault)
 		}
 	}
 
 	county := []rune(fmt.Sprintf("─┤ xy, wh, off: %v ", b))
 	for i, r := range county {
-		termbox.SetCell(xbase+i+1, ybase, r, termbox.ColorDefault, termbox.ColorDefault)
+		sw.SetCell(xbase+i+1, ybase, r, termbox.ColorDefault, termbox.ColorDefault)
 	}
 
-	termbox.SetCell(xbase, ybase, glyph_corner_tl, termbox.ColorDefault, termbox.ColorDefault)
-	termbox.SetCell(xbase+w-1, ybase, glyph_corner_tr, termbox.ColorDefault, termbox.ColorDefault)
-	termbox.SetCell(xbase+w-1, ybase+h-1, glyph_corner_br, termbox.ColorDefault, termbox.ColorDefault)
-	termbox.SetCell(xbase, ybase+h-1, glyph_corner_bl, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(xbase, ybase, glyph_corner_tl, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(xbase+w-1, ybase, glyph_corner_tr, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(xbase+w-1, ybase+h-1, glyph_corner_br, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(xbase, ybase+h-1, glyph_corner_bl, termbox.ColorDefault, termbox.ColorDefault)
 
-	scrollbar(b)
+	scrollbar(sw, b)
 }
 
 const (
@@ -89,7 +90,7 @@ func max(a, b int) int {
 	}
 }
 
-func scrollbar(b BoxInfo) {
+func scrollbar(sw screen.Writeable, b BoxInfo) {
 	//
 
 	xbase, ybase := b.Loc.X, b.Loc.Y
@@ -104,7 +105,7 @@ func scrollbar(b BoxInfo) {
 	y := ybase + topOffset
 	bigy := ybase + h - 1 - botOffset
 
-	termbox.SetCell(x, y, glyph_pin, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(x, y, glyph_pin, termbox.ColorDefault, termbox.ColorDefault)
 	//
 	contentSize := b.Off.Lines
 	currentLineIndex := b.Off.OnLine
@@ -122,19 +123,19 @@ func scrollbar(b BoxInfo) {
 	//
 	for yy := y; yy < y+downset; yy += 1 {
 
-		termbox.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorDefault)
+		sw.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorDefault)
 
 	}
 
 	for yy := y + downset; yy < y+downset+barSize; yy += 1 {
-		termbox.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorCyan)
+		sw.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorCyan)
 	}
 
 	for yy := y + downset + barSize; yy < bigy; yy += 1 {
 
-		termbox.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorDefault)
+		sw.SetCell(x, yy, ' ', termbox.ColorDefault, termbox.ColorDefault)
 
 	}
 	//
-	termbox.SetCell(x, bigy, glyph_T, termbox.ColorDefault, termbox.ColorDefault)
+	sw.SetCell(x, bigy, glyph_T, termbox.ColorDefault, termbox.ColorDefault)
 }
