@@ -81,6 +81,14 @@ func Say(x, y int, message string) {
 	}
 }
 
+func max(a, b int) int {
+	if a < b {
+		return b
+	} else {
+		return a
+	}
+}
+
 func scrollbar(b BoxInfo) {
 	//
 
@@ -104,10 +112,7 @@ func scrollbar(b BoxInfo) {
 	y += 1
 	//
 	zoneSize := bigy - y
-	barSize := zoneSize * h / contentSize
-	if barSize == 0 {
-		barSize = 1
-	}
+	barSize := max(1, zoneSize*h/contentSize)
 	downset := currentLineIndex * (zoneSize - barSize) / contentSize
 
 	// Say(10, 8, fmt.Sprintf("zoneSize %v, h %v, barSize %v", zoneSize, h, barSize))
