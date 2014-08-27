@@ -1,17 +1,12 @@
 package main
 
-// import "github.com/limetext/termbox-go"
-
 import "github.com/nsf/termbox-go"
-import (
-	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
-	"github.com/ehedgehog/guineapig/examples/termboxed/screen"
-)
-
+import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "fmt"
 
+// import "github.com/limetext/termbox-go"
 // import "log"
-
 // import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
 
 type SimplePanel struct {
@@ -30,7 +25,7 @@ func (s *SimplePanel) Resize(x, y, w, h int) {
 }
 
 func (s *SimplePanel) SetCursor(x, y int) {
-	termbox.SetCursor(x, y)
+	termbox.SetCursor(x+s.x, y+s.y)
 }
 
 func (s *SimplePanel) SetCell(x, y int, ch rune, a, b termbox.Attribute) {
@@ -45,6 +40,8 @@ type EventHandler interface {
 	HandleKey(e *termbox.Event) error
 	HandleMouse(e *termbox.Event) error
 	HandleResize(x, y, w, h int) error
+	HandlePaint() error
+	HandleSetCursor() error
 }
 
 type Loc struct {
@@ -79,9 +76,7 @@ func (s *ScreenWritable) SetCursor(x, y int) {
 var k = 0
 
 func (s *ScreenWritable) SetCell(x, y int, ch rune, a, b termbox.Attribute) {
-	// 	termbox.SetCell(x+s.x, y+s.y, ch, a, b)
-	// draw.Say(15, 10+k*2, fmt.Sprintf("s.x = %v", s.x))
-	termbox.SetCell(x+0, y, ch, a, b)
+	termbox.SetCell(x, y, ch, a, b)
 	k += 1
 }
 
@@ -104,6 +99,11 @@ func NewEditorEventHandler(x, y int, w, h int) EventHandler {
 
 func (eh *EditorEventHandler) HandleResize(x, y, w, h int) error {
 	eh.e.p.Resize(x, y, w, h)
+	return nil
+}
+
+func (eh *EditorEventHandler) HandlePaint() error {
+	eh.e.b.PutAll(eh.e.p)
 	return nil
 }
 
@@ -144,26 +144,23 @@ func (eh *EditorEventHandler) HandleKey(e *termbox.Event) error {
 	} else {
 		eh.e.b.Insert(e.Ch)
 	}
+	return nil
+}
 
-	w, h := termbox.Size()
-	_, _ = w, h
-
-	eh.e.b.PutAll(eh.e.p)
+func (eh *EditorEventHandler) HandleSetCursor() error {
+	b := eh.e.b
+	w := eh.e.p
+	x, y := b.Where()
+	w.SetCursor(x+1, y+1)
 	return nil
 }
 
 func (eh *EditorEventHandler) HandleMouse(e *termbox.Event) error {
-
 	b := eh.e.b
 	report := fmt.Sprintf("<mouse: %v, %v>\n", e.MouseX, e.MouseY)
 	for _, ch := range report {
 		b.Insert(rune(ch))
 	}
-
-	w, h := termbox.Size()
-	_, _ = w, h
-
-	eh.e.b.PutAll(eh.e.p)
 	return nil
 }
 
@@ -178,6 +175,8 @@ func Handle(eh EventHandler, e *termbox.Event) {
 	if e.Type == termbox.EventResize {
 		eh.HandleResize(0, 0, e.Width, e.Height)
 	}
+	eh.HandlePaint()
+	eh.HandleSetCursor()
 }
 
 type SideBySide struct {
@@ -186,8 +185,15 @@ type SideBySide struct {
 }
 
 func (s *SideBySide) HandleKey(e *termbox.Event) error {
-	s.A.HandleKey(e)
-	s.B.HandleKey(e)
+	if e.Key == termbox.KeyCtrlA {
+		if s.Focus == s.A {
+			s.Focus = s.B
+		} else {
+			s.Focus = s.A
+		}
+	} else {
+		s.Focus.HandleKey(e)
+	}
 	return nil
 }
 
@@ -201,6 +207,16 @@ func (s *SideBySide) HandleResize(x, y, w, h int) error {
 	s.A.HandleResize(x, y, aw, h)
 	s.B.HandleResize(x+aw, y, bw, h)
 	return nil
+}
+
+func (s *SideBySide) HandlePaint() error {
+	s.A.HandlePaint()
+	s.B.HandlePaint()
+	return nil
+}
+
+func (s *SideBySide) HandleSetCursor() error {
+	return s.Focus.HandleSetCursor()
 }
 
 func NewSideBySide(A, B EventHandler) EventHandler {

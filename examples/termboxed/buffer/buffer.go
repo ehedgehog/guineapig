@@ -20,6 +20,7 @@ type Type interface {
 	ScrollUp()
 	ScrollDown()
 	ScrollTop()
+	Where() (col, row int)
 }
 
 // SimpleBuffer is a simplistic implementation of
@@ -180,6 +181,10 @@ func (b *SimpleBuffer) PutAll(w screen.Writeable) {
 		}
 	}
 	w.SetCursor(b.col+1, b.line+1-b.verticalOffset)
+}
+
+func (s *SimpleBuffer) Where() (col, row int) {
+	return s.col, s.line
 }
 
 func New(w, h int) Type {
