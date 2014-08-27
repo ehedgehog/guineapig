@@ -26,12 +26,12 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content        []string
-	line           int
-	col            int
-	verticalOffset int
-	width          int
-	height         int
+	content        []string // existing lines of text
+	line           int      // current line number (index inside content)
+	col            int      // current column number (index inside current line)
+	verticalOffset int      // vertical scroll offset
+	width          int      // width (of a /buffer/? that can't be right)
+	height         int      // height (of a /buffer/? that can't be right)
 }
 
 func (b *SimpleBuffer) makeRoom() {
@@ -148,7 +148,10 @@ func min(x, y int) int {
 func (b *SimpleBuffer) PutAll(w screen.Writeable) {
 
 	loc := draw.XY{0, 0}
-	size := draw.WH{b.width, b.height}
+
+	ww, wh := w.Size()
+
+	size := draw.WH{ww, wh}
 
 	length := len(b.content)
 	if b.line > length {
