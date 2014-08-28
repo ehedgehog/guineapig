@@ -183,8 +183,6 @@ func Handle(eh EventHandler, e *termbox.Event) {
 	if e.Type == termbox.EventResize {
 		eh.HandleResize(0, 0, e.Width, e.Height)
 	}
-	eh.HandlePaint()
-	eh.HandleSetCursor()
 }
 
 type SideBySide struct {
@@ -247,15 +245,16 @@ func main() {
 	ehB := NewEditorEventHandler(w-w/2, 0, w/2, h)
 	eh := NewSideBySide(ehA, ehB)
 
-	// Handle(eh, &termbox.Event{})
 	eh.HandleResize(0, 0, w, h)
 
 	for {
+		eh.HandlePaint()
+		eh.HandleSetCursor()
+		termbox.Flush()
 		ev := termbox.PollEvent()
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
 			return
 		}
 		Handle(eh, &ev)
-		termbox.Flush()
 	}
 }

@@ -191,5 +191,5 @@ func (s *SimpleBuffer) Where() (col, row int) {
 }
 
 func New(w, h int) Type {
-	return &SimpleBuffer{content: []string{""}, width: w, height: h}
+	return &SimpleBuffer{content: []string{}, width: w, height: h}
 }
