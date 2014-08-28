@@ -62,42 +62,8 @@ type EditorEventHandler struct {
 	e *Editor
 }
 
-func (s *ScreenWritable) PutString(x, y int, content string) {
-	for i, ch := range content {
-		s.SetCell(x+i, y, ch, termbox.ColorDefault, termbox.ColorDefault)
-	}
-}
-
-func (s *ScreenWritable) Resize(x, y, w, h int) {
-	s.x, s.y = x, y
-	s.w, s.h = w, h
-}
-
-func (s *ScreenWritable) Size() (w, h int) {
-	return s.w, s.h
-}
-
-func (s *ScreenWritable) SetCursor(x, y int) {
-	termbox.SetCursor(x, y)
-}
-
-var k = 0
-
-func (s *ScreenWritable) SetCell(x, y int, ch rune, a, b termbox.Attribute) {
-	termbox.SetCell(x, y, ch, a, b)
-	k += 1
-}
-
-type ScreenWritable struct {
-	x, y, w, h int
-}
-
-func NewScreenWriteable(x, y, w, h int) screen.Writeable {
-	return &ScreenWritable{x, y, w, h}
-}
-
 func NewEditorEventHandler(x, y int, w, h int) EventHandler {
-	ws := NewScreenWriteable(x, y, w, h)
+	ws := screen.NewScreenWriteable(x, y, w, h)
 	p := NewPanel(ws, x, y, w, h)
 	b := buffer.New(w, h)
 	l := Loc{0, 0}
