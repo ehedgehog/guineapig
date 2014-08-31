@@ -16,7 +16,7 @@ type Type interface {
 	DownOne()
 	ForwardOne()
 	Return()
-	PutAll(w screen.Writeable)
+	PutAll(c screen.Canvas)
 	ScrollUp()
 	ScrollDown()
 	ScrollTop()
@@ -145,7 +145,7 @@ func min(x, y int) int {
 	}
 }
 
-func (b *SimpleBuffer) PutAll(w screen.Writeable) {
+func (b *SimpleBuffer) PutAll(w screen.Canvas) {
 
 	loc := draw.XY{0, 0}
 
@@ -164,16 +164,16 @@ func (b *SimpleBuffer) PutAll(w screen.Writeable) {
 	draw.Box(w, fmt.Sprintf("offset: %v, line: %v, cursor(col %v, line %v), height: %v", b.verticalOffset, b.line, b.col+1, b.line+1-b.verticalOffset, b.height), info)
 
 	vertical := b.height - 2
-	limit := min(vertical, len(b.content)-b.verticalOffset)
+	// limit := min(vertical, len(b.content)-b.verticalOffset)
 
-	w.PutString(80, 0, fmt.Sprintf(" range [%v, %v] ", b.verticalOffset, limit))
+	// w.PutString(80, 0, fmt.Sprintf(" range [%v, %v] ", b.verticalOffset, limit))
 
 	wLine := 1
 	bLine := b.verticalOffset
 	content := b.content
 	for {
 		if bLine >= 0 && bLine < len(content) {
-			w.PutString(1, wLine, content[bLine])
+			screen.PutString(w, 1, wLine, content[bLine], screen.DefaultStyle) // w.PutString(1, wLine, content[bLine])
 		} else {
 			// w.PutString(1, wLine, "?")
 		}

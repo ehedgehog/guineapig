@@ -43,7 +43,8 @@ func NewPanel(outer screen.Panel, x, y int, w, h int) screen.Panel {
 type EventHandler interface {
 	HandleKey(e *termbox.Event) error
 	HandleMouse(e *termbox.Event) error
-	HandleResize(x, y, w, h int) error
+	// HandleResize(x, y, w, h int) error
+	HandleResizeTo(outer screen.Canvas) error
 	HandlePaint() error
 	HandleSetCursor() error
 }
@@ -62,6 +63,124 @@ type EditorEventHandler struct {
 	e *Editor
 }
 
+type EditorPanel struct {
+	panel  screen.Canvas
+	buffer buffer.Type
+	where  Loc
+}
+
+func NewEditorPanel() EventHandler {
+	ws := screen.Canvas(nil)
+	return &EditorPanel{ws, buffer.New(0, 0), Loc{0, 0}}
+}
+
+func (ep *EditorPanel) HandleKey(e *termbox.Event) error {
+	buffer := ep.buffer
+	if e.Ch == 0 {
+		switch e.Key {
+		case 0:
+			// nothing
+		case termbox.KeySpace:
+			buffer.Insert(' ')
+		case termbox.KeyBackspace2:
+			buffer.DeleteBack()
+		case termbox.KeyDelete:
+			buffer.DeleteForward()
+		case termbox.KeyArrowLeft:
+			buffer.BackOne()
+		case termbox.KeyEnter:
+			buffer.Return()
+		case termbox.KeyArrowRight:
+			buffer.ForwardOne()
+		case termbox.KeyArrowUp:
+			buffer.UpOne()
+		case termbox.KeyArrowDown:
+			buffer.DownOne()
+		case termbox.KeyF1:
+			buffer.ScrollUp()
+		case termbox.KeyF2:
+			buffer.ScrollDown()
+		case termbox.KeyF3:
+			buffer.ScrollTop()
+		default:
+			b := buffer
+			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
+			for _, ch := range report {
+				b.Insert(rune(ch))
+			}
+		}
+	} else {
+		buffer.Insert(e.Ch)
+	}
+	return nil
+}
+
+func (ep *EditorPanel) HandleMouse(e *termbox.Event) error {
+	panic("mouse")
+	return nil
+}
+
+func (ep *EditorPanel) HandlePaint() error {
+	ep.buffer.PutAll(ep.panel)
+	return nil
+}
+
+func (eh *EditorPanel) HandleResizeTo(outer screen.Canvas) error {
+	eh.panel = outer
+	return nil
+}
+
+func (ep *EditorPanel) HandleSetCursor() error {
+	x, y := ep.buffer.Where()
+	ep.panel.SetCursor(x, y)
+	return nil
+}
+
+type SideBySide2 struct {
+	Focus EventHandler
+	A, B  EventHandler
+}
+
+func (s *SideBySide2) HandleKey(e *termbox.Event) error {
+	if e.Key == termbox.KeyCtrlA {
+		if s.Focus == s.A {
+			s.Focus = s.B
+		} else {
+			s.Focus = s.A
+		}
+	} else {
+		s.Focus.HandleKey(e)
+	}
+	return nil
+}
+
+func (s *SideBySide2) HandleMouse(e *termbox.Event) error {
+	return nil
+}
+
+func (s *SideBySide2) HandleResizeTo(outer screen.Canvas) error {
+	w, h := outer.Size()
+	aw := w / 2
+	bw := w - aw
+	s.A.HandleResizeTo(screen.NewSubCanvas(outer, 0, 0, aw, h))
+	s.B.HandleResizeTo(screen.NewSubCanvas(outer, aw, 0, bw, h))
+	return nil
+}
+
+func (s *SideBySide2) HandlePaint() error {
+	s.A.HandlePaint()
+	s.B.HandlePaint()
+	return nil
+}
+
+func (s *SideBySide2) HandleSetCursor() error {
+	return s.Focus.HandleSetCursor()
+}
+
+func NewSideBySide2(A, B EventHandler) EventHandler {
+	return &SideBySide2{A, A, B}
+}
+
 func NewEditorEventHandler(x, y int, w, h int) EventHandler {
 	ws := screen.NewScreenWriteable(x, y, w, h)
 	p := NewPanel(ws, x, y, w, h)
@@ -71,13 +190,14 @@ func NewEditorEventHandler(x, y int, w, h int) EventHandler {
 	return &EditorEventHandler{e}
 }
 
-func (eh *EditorEventHandler) HandleResize(x, y, w, h int) error {
-	eh.e.p.Resize(x, y, w, h)
+func (eh *EditorEventHandler) HandleResizeTo(outer screen.Canvas) error {
+	panic("old resize")
+	// eh.e.p.Resize(x, y, w, h)
 	return nil
 }
 
 func (eh *EditorEventHandler) HandlePaint() error {
-	eh.e.b.PutAll(eh.e.p)
+	panic("old paint") // eh.e.b.PutAll(eh.e.p)
 	return nil
 }
 
@@ -138,65 +258,64 @@ func (eh *EditorEventHandler) HandleMouse(e *termbox.Event) error {
 	return nil
 }
 
-func Handle(eh EventHandler, e *termbox.Event) {
-	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-	if e.Type == termbox.EventMouse {
-		eh.HandleMouse(e)
-	}
-	if e.Type == termbox.EventKey {
-		eh.HandleKey(e)
-	}
-	if e.Type == termbox.EventResize {
-		eh.HandleResize(0, 0, e.Width, e.Height)
-	}
-}
+//func Handle(eh EventHandler, e *termbox.Event) {
+//	termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+//	if e.Type == termbox.EventMouse {
+//		eh.HandleMouse(e)
+//	}
+//	if e.Type == termbox.EventKey {
+//		eh.HandleKey(e)
+//	}
+//	if e.Type == termbox.EventResize {
+//		eh.HandleResize(0, 0, e.Width, e.Height)
+//	}
+//}
 
-type SideBySide struct {
-	Focus EventHandler
-	A, B  EventHandler
-}
-
-func (s *SideBySide) HandleKey(e *termbox.Event) error {
-	if e.Key == termbox.KeyCtrlA {
-		if s.Focus == s.A {
-			s.Focus = s.B
-		} else {
-			s.Focus = s.A
-		}
-	} else {
-		s.Focus.HandleKey(e)
-	}
-	return nil
-}
-
-func (s *SideBySide) HandleMouse(e *termbox.Event) error {
-	return nil
-}
-
-func (s *SideBySide) HandleResize(x, y, w, h int) error {
-	aw := w / 2
-	bw := w - aw
-	s.A.HandleResize(x, y, aw, h)
-	s.B.HandleResize(x+aw, y, bw, h)
-	return nil
-}
-
-func (s *SideBySide) HandlePaint() error {
-	s.A.HandlePaint()
-	s.B.HandlePaint()
-	return nil
-}
-
-func (s *SideBySide) HandleSetCursor() error {
-	return s.Focus.HandleSetCursor()
-}
-
-func NewSideBySide(A, B EventHandler) EventHandler {
-	return &SideBySide{A, A, B}
-}
+//type SideBySide struct {
+//	Focus EventHandler
+//	A, B  EventHandler
+//}
+//
+//func (s *SideBySide) HandleKey(e *termbox.Event) error {
+//	if e.Key == termbox.KeyCtrlA {
+//		if s.Focus == s.A {
+//			s.Focus = s.B
+//		} else {
+//			s.Focus = s.A
+//		}
+//	} else {
+//		s.Focus.HandleKey(e)
+//	}
+//	return nil
+//}
+//
+//func (s *SideBySide) HandleMouse(e *termbox.Event) error {
+//	return nil
+//}
+//
+//func (s *SideBySide) HandleResize(x, y, w, h int) error {
+//	aw := w / 2
+//	bw := w - aw
+//	s.A.HandleResize(x, y, aw, h)
+//	s.B.HandleResize(x+aw, y, bw, h)
+//	return nil
+//}
+//
+//func (s *SideBySide) HandlePaint() error {
+//	s.A.HandlePaint()
+//	s.B.HandlePaint()
+//	return nil
+//}
+//
+//func (s *SideBySide) HandleSetCursor() error {
+//	return s.Focus.HandleSetCursor()
+//}
+//
+//func NewSideBySide(A, B EventHandler) EventHandler {
+//	return &SideBySide{A, A, B}
+//}
 
 func main() {
-
 	err := termbox.Init()
 	if err != nil {
 		panic(err)
@@ -205,13 +324,19 @@ func main() {
 
 	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
 
-	w, h := termbox.Size()
+	// w, h := termbox.Size()
+	page := screen.NewTermboxCanvas()
 
-	ehA := NewEditorEventHandler(0, 0, w/2, h)
-	ehB := NewEditorEventHandler(w-w/2, 0, w/2, h)
-	eh := NewSideBySide(ehA, ehB)
+	edA := NewEditorPanel()
+	edB := NewEditorPanel()
+	ed := NewSideBySide2(edA, edB)
 
-	eh.HandleResize(0, 0, w, h)
+	// ehA := NewEditorEventHandler(0, 0, w/2, h)
+	// ehB := NewEditorEventHandler(w-w/2, 0, w/2, h)
+	// eh := NewSideBySide(ehA, ehB)
+	eh := ed
+
+	eh.HandleResizeTo(page)
 
 	for {
 		eh.HandlePaint()
@@ -221,6 +346,48 @@ func main() {
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
 			return
 		}
-		Handle(eh, &ev)
+		termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+		if ev.Type == termbox.EventMouse {
+			eh.HandleMouse(&ev)
+		}
+		if ev.Type == termbox.EventKey {
+			eh.HandleKey(&ev)
+		}
+		if ev.Type == termbox.EventResize {
+			// 	eh.HandleResize(0, 0, ev.Width, ev.Height)
+			page = screen.NewTermboxCanvas()
+			eh.HandleResizeTo(page)
+		}
+		_ = page
 	}
 }
+
+//func OLDmain() {
+//
+//	err := termbox.Init()
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer termbox.Close()
+//
+//	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
+//
+//	w, h := termbox.Size()
+//
+//	ehA := NewEditorEventHandler(0, 0, w/2, h)
+//	ehB := NewEditorEventHandler(w-w/2, 0, w/2, h)
+//	eh := NewSideBySide(ehA, ehB)
+//
+//	eh.HandleResize(0, 0, w, h)
+//
+//	for {
+//		eh.HandlePaint()
+//		eh.HandleSetCursor()
+//		termbox.Flush()
+//		ev := termbox.PollEvent()
+//		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
+//			return
+//		}
+//		Handle(eh, &ev)
+//	}
+//}
