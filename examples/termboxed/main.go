@@ -132,8 +132,8 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 }
 
 func (ep *EditorPanel) SetCursor() error {
-	// x, y := ep.buffer.Where()
-	// ep.panel.SetCursor(x, y)
+	x, y := ep.buffer.Where()
+	ep.textBox.SetCursor(x, y)
 	return nil
 }
 
