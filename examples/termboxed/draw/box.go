@@ -8,17 +8,17 @@ import (
 )
 
 const (
-	glyph_hbar      = '─'
-	glyph_vbar      = '│'
-	glyph_corner_tl = '┌'
-	glyph_corner_tr = '┐'
-	glyph_corner_bl = '└'
-	glyph_corner_br = '┘'
-	glyph_plus      = '┼'
-	glyph_T         = '┬'
-	glyph_pin       = '┴'
-	glyph_lstile    = '├'
-	glyph_rstile    = '┤'
+	Glyph_hbar      = '─'
+	Glyph_vbar      = '│'
+	Glyph_corner_tl = '┌'
+	Glyph_corner_tr = '┐'
+	Glyph_corner_bl = '└'
+	Glyph_corner_br = '┘'
+	Glyph_plus      = '┼'
+	Glyph_T         = '┬'
+	Glyph_pin       = '┴'
+	Glyph_lstile    = '├'
+	Glyph_rstile    = '┤'
 )
 
 type XY struct {
@@ -47,13 +47,13 @@ func Box(sw screen.Canvas, content string, b BoxInfo) {
 
 	for x := 1; x < w-1; x += 1 {
 		for _, y := range []int{0, h - 1} {
-			sw.SetCell(xbase+x, ybase+y, glyph_hbar, screen.DefaultStyle)
+			sw.SetCell(xbase+x, ybase+y, Glyph_hbar, screen.DefaultStyle)
 		}
 	}
 
 	for y := 1; y < h-1; y += 1 {
 		for _, x := range []int{0, w - 1} {
-			sw.SetCell(xbase+x, ybase+y, glyph_vbar, screen.DefaultStyle)
+			sw.SetCell(xbase+x, ybase+y, Glyph_vbar, screen.DefaultStyle)
 		}
 	}
 
@@ -62,17 +62,17 @@ func Box(sw screen.Canvas, content string, b BoxInfo) {
 		sw.SetCell(xbase+i+1, ybase, r, screen.DefaultStyle)
 	}
 
-	sw.SetCell(xbase, ybase, glyph_corner_tl, screen.DefaultStyle)
-	sw.SetCell(xbase+w-1, ybase, glyph_corner_tr, screen.DefaultStyle)
-	sw.SetCell(xbase+w-1, ybase+h-1, glyph_corner_br, screen.DefaultStyle)
-	sw.SetCell(xbase, ybase+h-1, glyph_corner_bl, screen.DefaultStyle)
+	sw.SetCell(xbase, ybase, Glyph_corner_tl, screen.DefaultStyle)
+	sw.SetCell(xbase+w-1, ybase, Glyph_corner_tr, screen.DefaultStyle)
+	sw.SetCell(xbase+w-1, ybase+h-1, Glyph_corner_br, screen.DefaultStyle)
+	sw.SetCell(xbase, ybase+h-1, Glyph_corner_bl, screen.DefaultStyle)
 
-	scrollbar(sw, b)
+	Scrollbar(sw, b)
 }
 
 const (
-	topOffset = 4
-	botOffset = 4
+	topOffset = 2
+	botOffset = 2
 )
 
 func Say(x, y int, message string) {
@@ -90,22 +90,26 @@ func max(a, b int) int {
 	}
 }
 
-func scrollbar(sw screen.Canvas, b BoxInfo) {
+func Scrollbar(sw screen.Canvas, b BoxInfo) {
 	//
 
 	xbase, ybase := b.Loc.X, b.Loc.Y
 	w, h := b.Size.W, b.Size.H
+
+	for yy := 0; yy < h; yy += 1 {
+		sw.SetCell(xbase+w, yy, Glyph_vbar, screen.DefaultStyle)
+	}
 
 	if b.Off.Lines < h {
 		return
 	}
 
 	//
-	x := xbase + w - 1
+	x := xbase + w
 	y := ybase + topOffset
 	bigy := ybase + h - 1 - botOffset
 
-	sw.SetCell(x, y, glyph_pin, screen.DefaultStyle)
+	sw.SetCell(x, y, Glyph_pin, screen.DefaultStyle)
 	//
 	contentSize := b.Off.Lines
 	currentLineIndex := b.Off.OnLine
@@ -115,10 +119,6 @@ func scrollbar(sw screen.Canvas, b BoxInfo) {
 	zoneSize := bigy - y
 	barSize := max(1, zoneSize*h/contentSize)
 	downset := currentLineIndex * (zoneSize - barSize) / contentSize
-
-	// Say(10, 8, fmt.Sprintf("zoneSize %v, h %v, barSize %v", zoneSize, h, barSize))
-	// Say(10, 9, fmt.Sprintf("line %v, gapSize %v, contentsSize %v", currentLineIndex, zoneSize-barSize, contentSize))
-	// Say(10, 10, fmt.Sprintf("zoneSize %v, barSize %v, downset %v", zoneSize, barSize, downset))
 
 	//
 	for yy := y; yy < y+downset; yy += 1 {
@@ -137,5 +137,5 @@ func scrollbar(sw screen.Canvas, b BoxInfo) {
 
 	}
 	//
-	sw.SetCell(x, bigy, glyph_T, screen.DefaultStyle)
+	sw.SetCell(x, bigy, Glyph_T, screen.DefaultStyle)
 }

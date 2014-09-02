@@ -1,7 +1,10 @@
 package main
 
 import "github.com/nsf/termbox-go"
-import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+import (
+	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+	"github.com/ehedgehog/guineapig/examples/termboxed/draw"
+)
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "fmt"
 
@@ -22,14 +25,23 @@ type Loc struct {
 }
 
 type EditorPanel struct {
-	panel  screen.Canvas
+	panel screen.Canvas
+
+	topBar    screen.Canvas
+	bottomBar screen.Canvas
+	leftBar   screen.Canvas
+	rightBar  screen.Canvas
+	textBox   screen.Canvas
+
 	buffer buffer.Type
 	where  Loc
 }
 
 func NewEditorPanel() EventHandler {
-	ws := screen.Canvas(nil)
-	return &EditorPanel{ws, buffer.New(0, 0), Loc{0, 0}}
+	return &EditorPanel{
+		buffer: buffer.New(0, 0),
+		where:  Loc{0, 0},
+	}
 }
 
 func (ep *EditorPanel) Key(e *termbox.Event) error {
@@ -79,18 +91,59 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 }
 
 func (ep *EditorPanel) Paint() error {
-	ep.buffer.PutAll(ep.panel)
+	w, _ := ep.bottomBar.Size()
+	ep.buffer.PutAll(ep.textBox)
+	//
+	ep.bottomBar.SetCell(0, 0, draw.Glyph_corner_bl, screen.DefaultStyle)
+	for i := 1; i < w; i += 1 {
+		ep.bottomBar.SetCell(i, 0, draw.Glyph_hbar, screen.DefaultStyle)
+	}
+	ep.bottomBar.SetCell(w-1, 0, draw.Glyph_corner_br, screen.DefaultStyle)
+	//
+	_, lh := ep.leftBar.Size()
+	for j := 0; j < lh; j += 1 {
+		ep.leftBar.SetCell(0, j, draw.Glyph_vbar, screen.DefaultStyle)
+	}
+	//
+	ep.topBar.SetCell(0, 0, draw.Glyph_corner_tl, screen.DefaultStyle)
+	for i := 1; i < w; i += 1 {
+		ep.topBar.SetCell(i, 0, draw.Glyph_hbar, screen.DefaultStyle)
+	}
+	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
+	ep.topBar.SetCell(w-1, 0, draw.Glyph_corner_tr, screen.DefaultStyle)
+	//
+	line, content := ep.buffer.Expose()
+	_, sh := ep.rightBar.Size()
+	size := draw.WH{1, sh}
+	length := max(line, len(content))
+	off := draw.Scrolling{length, line}
+	info := draw.BoxInfo{draw.XY{0, 0}, size, off}
+	draw.Scrollbar(ep.rightBar, info)
+	//
 	return nil
 }
 
+func max(x, y int) int {
+	if x > y {
+		return x
+	} else {
+		return y
+	}
+}
+
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
-	eh.panel = outer
+	w, h := outer.Size()
+	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
+	eh.rightBar = screen.NewSubCanvas(outer, w-2, 1, 1, h-2)
+	eh.topBar = screen.NewSubCanvas(outer, 0, 0, 1, h)
+	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
+	eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
 	return nil
 }
 
 func (ep *EditorPanel) SetCursor() error {
-	x, y := ep.buffer.Where()
-	ep.panel.SetCursor(x, y)
+	// x, y := ep.buffer.Where()
+	// ep.panel.SetCursor(x, y)
 	return nil
 }
 
@@ -113,6 +166,7 @@ func (s *SideBySide) Key(e *termbox.Event) error {
 }
 
 func (s *SideBySide) Mouse(e *termbox.Event) error {
+	panic("mouse")
 	return nil
 }
 
