@@ -15,6 +15,7 @@ type Type interface {
 	ScrollUp()
 	ScrollDown()
 	ScrollTop()
+	SetWhere(col, row int)
 	Where() (col, row int)
 	Expose() (line int, content []string) // attempt to eliminate?
 }
@@ -148,6 +149,10 @@ func (b *SimpleBuffer) PutAll(w screen.Canvas) {
 
 func (s *SimpleBuffer) Where() (col, row int) {
 	return s.col, s.line
+}
+
+func (s *SimpleBuffer) SetWhere(col, row int) {
+	s.col, s.line = col, row
 }
 
 func New(w, h int) Type {

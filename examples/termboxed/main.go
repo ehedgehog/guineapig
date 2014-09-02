@@ -1,12 +1,9 @@
 package main
 
 import "fmt"
-
 import "github.com/nsf/termbox-go"
-import (
-	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
-	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
-)
+import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
+import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
@@ -23,16 +20,13 @@ type Loc struct {
 }
 
 type EditorPanel struct {
-	panel screen.Canvas
-
 	topBar    screen.Canvas
 	bottomBar screen.Canvas
 	leftBar   screen.Canvas
 	rightBar  screen.Canvas
 	textBox   screen.Canvas
-
-	buffer buffer.Type
-	where  Loc
+	buffer    buffer.Type
+	where     Loc
 }
 
 func NewEditorPanel() EventHandler {
@@ -84,7 +78,8 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
-	panic("mouse")
+	x, y := e.MouseX, e.MouseY
+	ep.buffer.SetWhere(x-1, y-1)
 	return nil
 }
 
@@ -138,8 +133,9 @@ func (ep *EditorPanel) SetCursor() error {
 }
 
 type SideBySide struct {
-	Focus EventHandler
-	A, B  EventHandler
+	widthA int
+	Focus  EventHandler
+	A, B   EventHandler
 }
 
 func (s *SideBySide) Key(e *termbox.Event) error {
@@ -156,7 +152,14 @@ func (s *SideBySide) Key(e *termbox.Event) error {
 }
 
 func (s *SideBySide) Mouse(e *termbox.Event) error {
-	panic("mouse")
+	x := e.MouseX
+	if x > s.widthA {
+		s.Focus = s.B
+		e.MouseX -= s.widthA
+	} else {
+		s.Focus = s.A
+	}
+	s.Focus.Mouse(e)
 	return nil
 }
 
@@ -164,6 +167,7 @@ func (s *SideBySide) ResizeTo(outer screen.Canvas) error {
 	w, h := outer.Size()
 	aw := w / 2
 	bw := w - aw
+	s.widthA = aw
 	s.A.ResizeTo(screen.NewSubCanvas(outer, 0, 0, aw, h))
 	s.B.ResizeTo(screen.NewSubCanvas(outer, aw, 0, bw, h))
 	return nil
@@ -180,7 +184,7 @@ func (s *SideBySide) SetCursor() error {
 }
 
 func NewSideBySide(A, B EventHandler) EventHandler {
-	return &SideBySide{A, A, B}
+	return &SideBySide{0, A, A, B}
 }
 
 func main() {
