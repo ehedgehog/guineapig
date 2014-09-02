@@ -3,6 +3,7 @@ package draw
 import (
 	"fmt"
 
+	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 	"github.com/ehedgehog/guineapig/examples/termboxed/screen"
 	"github.com/nsf/termbox-go"
 )
@@ -117,7 +118,7 @@ func Scrollbar(sw screen.Canvas, b BoxInfo) {
 	y += 1
 	//
 	zoneSize := bigy - y
-	barSize := max(1, zoneSize*h/contentSize)
+	barSize := bounds.Max(1, zoneSize*h/contentSize)
 	downset := currentLineIndex * (zoneSize - barSize) / contentSize
 
 	//

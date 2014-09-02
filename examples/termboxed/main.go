@@ -1,16 +1,14 @@
 package main
 
-import "github.com/nsf/termbox-go"
-import (
-	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
-	"github.com/ehedgehog/guineapig/examples/termboxed/draw"
-)
-import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "fmt"
 
-// import "github.com/limetext/termbox-go"
-// import "log"
-// import _ "github.com/ehedgehog/guineapig/examples/termboxed/panel"
+import "github.com/nsf/termbox-go"
+import (
+	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
+	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+)
+import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
+import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
 type EventHandler interface {
 	Key(e *termbox.Event) error
@@ -115,20 +113,12 @@ func (ep *EditorPanel) Paint() error {
 	line, content := ep.buffer.Expose()
 	_, sh := ep.rightBar.Size()
 	size := draw.WH{1, sh}
-	length := max(line, len(content))
+	length := bounds.Max(line, len(content))
 	off := draw.Scrolling{length, line}
 	info := draw.BoxInfo{draw.XY{0, 0}, size, off}
 	draw.Scrollbar(ep.rightBar, info)
 	//
 	return nil
-}
-
-func max(x, y int) int {
-	if x > y {
-		return x
-	} else {
-		return y
-	}
 }
 
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
