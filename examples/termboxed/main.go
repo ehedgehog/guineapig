@@ -21,12 +21,6 @@ type Loc struct {
 	X, Y int
 }
 
-type Editor struct {
-	p screen.Panel
-	b buffer.Type
-	l Loc
-}
-
 type EditorPanel struct {
 	panel  screen.Canvas
 	buffer buffer.Type
