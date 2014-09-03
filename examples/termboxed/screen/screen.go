@@ -33,7 +33,12 @@ var StyleBackCyan = &StyleStruct{termbox.ColorDefault, termbox.ColorCyan}
 
 func PutString(c Canvas, x, y int, content string, s Style) {
 	i := 0
+	w, _ := c.Size()
+	limit := w - x
 	for _, ch := range content {
+		if i > limit {
+			break
+		}
 		c.SetCell(x+i, y, ch, s)
 		i += 1
 	}

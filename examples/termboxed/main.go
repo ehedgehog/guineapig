@@ -120,7 +120,7 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	w, h := outer.Size()
 	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
 	eh.rightBar = screen.NewSubCanvas(outer, w-2, 1, 1, h-2)
-	eh.topBar = screen.NewSubCanvas(outer, 0, 0, 1, h)
+	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, h)
 	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
 	eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
 	return nil
