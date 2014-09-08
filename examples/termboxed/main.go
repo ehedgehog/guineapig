@@ -58,12 +58,6 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			buffer.UpOne()
 		case termbox.KeyArrowDown:
 			buffer.DownOne()
-			//		case termbox.KeyF1:
-			//			buffer.ScrollUp()
-			//		case termbox.KeyF2:
-			//			buffer.ScrollDown()
-			//		case termbox.KeyF3:
-			//			buffer.ScrollTop()
 		default:
 			b := buffer
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
@@ -107,12 +101,8 @@ func (ep *EditorPanel) Paint() error {
 	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
 	ep.topBar.SetCell(w-1, 0, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
-	_, sh := ep.rightBar.Size()
-	size := draw.WH{1, sh}
 	length := bounds.Max(line, len(content))
-	off := draw.Scrolling{length, line}
-	info := draw.BoxInfo{size, off}
-	draw.Scrollbar(ep.rightBar, info)
+	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
 	//
 	return nil
 }

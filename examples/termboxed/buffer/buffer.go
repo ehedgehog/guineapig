@@ -12,9 +12,6 @@ type Type interface {
 	ForwardOne()
 	Return()
 	PutLines(c screen.Canvas, first, n int)
-	//	ScrollUp()
-	//	ScrollDown()
-	//	ScrollTop()
 	SetWhere(col, row int)
 	Where() (col, row int)
 	Expose() (line int, content []string) // attempt to eliminate?
@@ -23,12 +20,9 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content        []string // existing lines of text
-	line           int      // current line number (index inside content)
-	col            int      // current column number (index inside current line)
-	verticalOffset int      // vertical scroll offset
-	width          int      // width (of a /buffer/? that can't be right)
-	height         int      // height (of a /buffer/? that can't be right)
+	content []string // existing lines of text
+	line    int      // current line number (index inside content)
+	col     int      // current column number (index inside current line)
 }
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
@@ -45,22 +39,6 @@ func (b *SimpleBuffer) makeRoom() {
 		b.content[b.line] += "        "
 	}
 }
-
-//func (b *SimpleBuffer) ScrollUp() {
-//	if b.verticalOffset > 0 {
-//		b.verticalOffset -= 1
-//		b.line -= 1
-//	}
-//}
-//
-//func (b *SimpleBuffer) ScrollDown() {
-//	b.verticalOffset += 1
-//}
-//
-//func (b *SimpleBuffer) ScrollTop() {
-//	b.line = 0
-//	b.verticalOffset = 0
-//}
 
 func (b *SimpleBuffer) Insert(ch rune) {
 
@@ -97,18 +75,12 @@ func (b *SimpleBuffer) Return() {
 
 func (b *SimpleBuffer) UpOne() {
 	if b.line > 0 {
-		//		if b.line == b.verticalOffset && b.verticalOffset > 0 {
-		//			b.verticalOffset -= 1
-		//		}
 		b.line -= 1
 	}
 }
 
 func (b *SimpleBuffer) DownOne() {
 	b.line += 1
-	//	if b.line-b.verticalOffset > b.height-1 {
-	//		b.verticalOffset += 1
-	//	}
 }
 
 func (b *SimpleBuffer) BackOne() {
@@ -156,5 +128,5 @@ func (s *SimpleBuffer) SetWhere(col, row int) {
 }
 
 func New(w, h int) Type {
-	return &SimpleBuffer{content: []string{}, width: w, height: h}
+	return &SimpleBuffer{content: []string{}}
 }
