@@ -20,13 +20,14 @@ type Loc struct {
 }
 
 type EditorPanel struct {
-	topBar    screen.Canvas
-	bottomBar screen.Canvas
-	leftBar   screen.Canvas
-	rightBar  screen.Canvas
-	textBox   screen.Canvas
-	buffer    buffer.Type
-	where     Loc
+	topBar         screen.Canvas
+	bottomBar      screen.Canvas
+	leftBar        screen.Canvas
+	rightBar       screen.Canvas
+	textBox        screen.Canvas
+	buffer         buffer.Type
+	verticalOffset int
+	where          Loc
 }
 
 func NewEditorPanel() EventHandler {
@@ -77,11 +78,23 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	return nil
 }
 
+func (ep *EditorPanel) AdjustScrolling() {
+	line, _ := ep.buffer.Expose()
+	_, h := ep.textBox.Size()
+	if line < ep.verticalOffset {
+		ep.verticalOffset = line
+	}
+	if line > ep.verticalOffset+h-1 {
+		ep.verticalOffset = line - h + 1
+	}
+}
+
 func (ep *EditorPanel) Paint() error {
+	ep.AdjustScrolling()
 	w, _ := ep.bottomBar.Size()
 	line, content := ep.buffer.Expose()
 	_, textHeight := ep.textBox.Size()
-	ep.buffer.PutLines(ep.textBox, 0, textHeight)
+	ep.buffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
 	//
 	ep.bottomBar.SetCell(0, 0, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -119,7 +132,7 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 
 func (ep *EditorPanel) SetCursor() error {
 	x, y := ep.buffer.Where()
-	ep.textBox.SetCursor(x, y)
+	ep.textBox.SetCursor(x, y-ep.verticalOffset)
 	return nil
 }
 
