@@ -58,12 +58,12 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			buffer.UpOne()
 		case termbox.KeyArrowDown:
 			buffer.DownOne()
-		case termbox.KeyF1:
-			buffer.ScrollUp()
-		case termbox.KeyF2:
-			buffer.ScrollDown()
-		case termbox.KeyF3:
-			buffer.ScrollTop()
+			//		case termbox.KeyF1:
+			//			buffer.ScrollUp()
+			//		case termbox.KeyF2:
+			//			buffer.ScrollDown()
+			//		case termbox.KeyF3:
+			//			buffer.ScrollTop()
 		default:
 			b := buffer
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
@@ -85,7 +85,9 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 
 func (ep *EditorPanel) Paint() error {
 	w, _ := ep.bottomBar.Size()
-	ep.buffer.PutAll(ep.textBox)
+	line, content := ep.buffer.Expose()
+	_, textHeight := ep.textBox.Size()
+	ep.buffer.PutLines(ep.textBox, 0, textHeight)
 	//
 	ep.bottomBar.SetCell(0, 0, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -105,12 +107,11 @@ func (ep *EditorPanel) Paint() error {
 	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
 	ep.topBar.SetCell(w-1, 0, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
-	line, content := ep.buffer.Expose()
 	_, sh := ep.rightBar.Size()
 	size := draw.WH{1, sh}
 	length := bounds.Max(line, len(content))
 	off := draw.Scrolling{length, line}
-	info := draw.BoxInfo{draw.XY{0, 0}, size, off}
+	info := draw.BoxInfo{size, off}
 	draw.Scrollbar(ep.rightBar, info)
 	//
 	return nil
@@ -119,7 +120,7 @@ func (ep *EditorPanel) Paint() error {
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	w, h := outer.Size()
 	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
-	eh.rightBar = screen.NewSubCanvas(outer, w-2, 1, 1, h-2)
+	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
 	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, h)
 	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
 	eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)

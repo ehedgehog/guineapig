@@ -11,10 +11,10 @@ type Type interface {
 	DownOne()
 	ForwardOne()
 	Return()
-	PutAll(c screen.Canvas)
-	ScrollUp()
-	ScrollDown()
-	ScrollTop()
+	PutLines(c screen.Canvas, first, n int)
+	//	ScrollUp()
+	//	ScrollDown()
+	//	ScrollTop()
 	SetWhere(col, row int)
 	Where() (col, row int)
 	Expose() (line int, content []string) // attempt to eliminate?
@@ -46,21 +46,21 @@ func (b *SimpleBuffer) makeRoom() {
 	}
 }
 
-func (b *SimpleBuffer) ScrollUp() {
-	if b.verticalOffset > 0 {
-		b.verticalOffset -= 1
-		b.line -= 1
-	}
-}
-
-func (b *SimpleBuffer) ScrollDown() {
-	b.verticalOffset += 1
-}
-
-func (b *SimpleBuffer) ScrollTop() {
-	b.line = 0
-	b.verticalOffset = 0
-}
+//func (b *SimpleBuffer) ScrollUp() {
+//	if b.verticalOffset > 0 {
+//		b.verticalOffset -= 1
+//		b.line -= 1
+//	}
+//}
+//
+//func (b *SimpleBuffer) ScrollDown() {
+//	b.verticalOffset += 1
+//}
+//
+//func (b *SimpleBuffer) ScrollTop() {
+//	b.line = 0
+//	b.verticalOffset = 0
+//}
 
 func (b *SimpleBuffer) Insert(ch rune) {
 
@@ -97,18 +97,18 @@ func (b *SimpleBuffer) Return() {
 
 func (b *SimpleBuffer) UpOne() {
 	if b.line > 0 {
-		if b.line == b.verticalOffset && b.verticalOffset > 0 {
-			b.verticalOffset -= 1
-		}
+		//		if b.line == b.verticalOffset && b.verticalOffset > 0 {
+		//			b.verticalOffset -= 1
+		//		}
 		b.line -= 1
 	}
 }
 
 func (b *SimpleBuffer) DownOne() {
 	b.line += 1
-	if b.line-b.verticalOffset > b.height-1 {
-		b.verticalOffset += 1
-	}
+	//	if b.line-b.verticalOffset > b.height-1 {
+	//		b.verticalOffset += 1
+	//	}
 }
 
 func (b *SimpleBuffer) BackOne() {
@@ -138,10 +138,10 @@ func (b *SimpleBuffer) DeleteForward() {
 	b.DeleteBack()
 }
 
-func (b *SimpleBuffer) PutAll(w screen.Canvas) {
+func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	content := b.content
 	row := 0
-	for line := 0; line < len(content); line += 1 {
+	for line := first; line < len(content) && n > 0; line += 1 {
 		screen.PutString(w, 0, row, content[line], screen.DefaultStyle)
 		row += 1
 	}
