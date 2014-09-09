@@ -154,8 +154,8 @@ func (ep *EditorPanel) SetCursor() error {
 		x, y := ep.mainBuffer.Where()
 		ep.textBox.SetCursor(x, y)
 	} else {
-		x, y := ep.lineBuffer.Where()
-		ep.topBar.SetCursor(x+delta, y)
+		x, _ := ep.lineBuffer.Where()
+		ep.topBar.SetCursor(x+delta, 0)
 	}
 	return nil
 }
