@@ -129,7 +129,7 @@ func (ep *EditorPanel) Paint() error {
 	//
 	// HACK -- shouldn't need to remake each time
 	tline, _ := ep.lineBuffer.Expose()
-	ep.lineBuffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta, 1), tline, 1)
+	ep.lineBuffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
 	//
 	length := bounds.Max(line, len(content))
 	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
