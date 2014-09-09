@@ -2,8 +2,11 @@ package main
 
 import "fmt"
 import "github.com/nsf/termbox-go"
-import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
-import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+import (
+	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
+	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+)
+
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
@@ -25,61 +28,71 @@ type EditorPanel struct {
 	leftBar        screen.Canvas
 	rightBar       screen.Canvas
 	textBox        screen.Canvas
-	buffer         buffer.Type
+	mainBuffer     buffer.Type
+	lineBuffer     buffer.Type
+	focusBuffer    *buffer.Type
 	verticalOffset int
 	where          Loc
 }
 
 func NewEditorPanel() EventHandler {
-	return &EditorPanel{
-		buffer: buffer.New(0, 0),
-		where:  Loc{0, 0},
+	ep := &EditorPanel{
+		mainBuffer: buffer.New(0, 0),
+		lineBuffer: buffer.New(0, 0),
+		where:      Loc{0, 0},
 	}
+	ep.focusBuffer = &ep.mainBuffer
+	return ep
 }
 
 func (ep *EditorPanel) Key(e *termbox.Event) error {
-	buffer := ep.buffer
+	b := *ep.focusBuffer
 	if e.Ch == 0 {
 		switch e.Key {
 		case 0:
 			// nothing
+		case termbox.KeyCtrlB:
+			if ep.focusBuffer == &ep.mainBuffer {
+				ep.focusBuffer = &ep.lineBuffer
+			} else {
+				ep.focusBuffer = &ep.mainBuffer
+			}
 		case termbox.KeySpace:
-			buffer.Insert(' ')
+			b.Insert(' ')
 		case termbox.KeyBackspace2:
-			buffer.DeleteBack()
+			b.DeleteBack()
 		case termbox.KeyDelete:
-			buffer.DeleteForward()
+			b.DeleteForward()
 		case termbox.KeyArrowLeft:
-			buffer.BackOne()
+			b.BackOne()
 		case termbox.KeyEnter:
-			buffer.Return()
+			b.Return()
 		case termbox.KeyArrowRight:
-			buffer.ForwardOne()
+			b.ForwardOne()
 		case termbox.KeyArrowUp:
-			buffer.UpOne()
+			b.UpOne()
 		case termbox.KeyArrowDown:
-			buffer.DownOne()
+			b.DownOne()
 		default:
-			b := buffer
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 			for _, ch := range report {
 				b.Insert(rune(ch))
 			}
 		}
 	} else {
-		buffer.Insert(e.Ch)
+		b.Insert(e.Ch)
 	}
 	return nil
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	x, y := e.MouseX, e.MouseY
-	ep.buffer.SetWhere(x-1, y-1)
+	ep.mainBuffer.SetWhere(x-1, y-1)
 	return nil
 }
 
 func (ep *EditorPanel) AdjustScrolling() {
-	line, _ := ep.buffer.Expose()
+	line, _ := ep.mainBuffer.Expose()
 	_, h := ep.textBox.Size()
 	if line < ep.verticalOffset {
 		ep.verticalOffset = line
@@ -92,9 +105,9 @@ func (ep *EditorPanel) AdjustScrolling() {
 func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
 	w, _ := ep.bottomBar.Size()
-	line, content := ep.buffer.Expose()
+	line, content := ep.mainBuffer.Expose()
 	_, textHeight := ep.textBox.Size()
-	ep.buffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
+	ep.mainBuffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
 	//
 	ep.bottomBar.SetCell(0, 0, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -114,25 +127,36 @@ func (ep *EditorPanel) Paint() error {
 	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
 	ep.topBar.SetCell(w-1, 0, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
+	// HACK -- shouldn't need to remake each time
+	tline, _ := ep.lineBuffer.Expose()
+	ep.lineBuffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta, 1), tline, 1)
+	//
 	length := bounds.Max(line, len(content))
 	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
 	//
 	return nil
 }
 
+const delta = 5
+
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	w, h := outer.Size()
 	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
 	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
-	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, h)
+	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, 1)
 	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
 	eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
 	return nil
 }
 
 func (ep *EditorPanel) SetCursor() error {
-	x, y := ep.buffer.Where()
-	ep.textBox.SetCursor(x, y-ep.verticalOffset)
+	if ep.focusBuffer == &ep.mainBuffer {
+		x, y := ep.mainBuffer.Where()
+		ep.textBox.SetCursor(x, y)
+	} else {
+		x, y := ep.lineBuffer.Where()
+		ep.topBar.SetCursor(x+delta, y)
+	}
 	return nil
 }
 
