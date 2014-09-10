@@ -87,7 +87,14 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	x, y := e.MouseX, e.MouseY
-	ep.mainBuffer.SetWhere(x-1, y-1)
+	w, h := ep.textBox.Size()
+	if 0 < x && x < w+1 && 0 < y && y < h+1 {
+		ep.mainBuffer.SetWhere(x-1, y-1)
+		ep.focusBuffer = &ep.mainBuffer
+	} else if x >= delta && y == 0 {
+		ep.lineBuffer.SetWhere(x-delta, 0)
+		ep.focusBuffer = &ep.lineBuffer
+	}
 	return nil
 }
 
