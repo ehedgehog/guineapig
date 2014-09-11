@@ -1,14 +1,19 @@
 package main
 
 import "fmt"
-import "github.com/nsf/termbox-go"
-import (
-	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
-	"github.com/ehedgehog/guineapig/examples/termboxed/buffer"
-)
 
+import "github.com/nsf/termbox-go"
+import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
+import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
+
+type Geometry struct {
+	minWidth  int
+	maxWidth  int
+	minHeight int
+	maxHeight int
+}
 
 type EventHandler interface {
 	Key(e *termbox.Event) error
@@ -16,6 +21,7 @@ type EventHandler interface {
 	ResizeTo(outer screen.Canvas) error
 	Paint() error
 	SetCursor() error
+	Geometry() Geometry
 }
 
 type Loc struct {
@@ -33,6 +39,14 @@ type EditorPanel struct {
 	focusBuffer    *buffer.Type
 	verticalOffset int
 	where          Loc
+}
+
+func (ep *EditorPanel) Geometry() Geometry {
+	minw := 2
+	maxw := 1000
+	minh := 2
+	maxh := 1000
+	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
 func NewEditorPanel() EventHandler {
@@ -167,10 +181,106 @@ func (ep *EditorPanel) SetCursor() error {
 	return nil
 }
 
+type Stack struct {
+	elements []EventHandler
+	heights  []int
+	focus    int
+}
+
+func NewStack(elements ...EventHandler) EventHandler {
+	return &Stack{
+		focus:    0,
+		elements: elements,
+		heights:  make([]int, len(elements)),
+	}
+}
+
+func (s *Stack) Geometry() Geometry {
+	minw, maxw, minh, maxh := 0, 0, 0, 0
+	for _, eh := range s.elements {
+		g := eh.Geometry()
+		minw = bounds.Max(minw, g.minWidth)
+		maxw = bounds.Max(maxw, g.maxWidth)
+		minh = minh + g.minHeight
+		maxh = maxh + g.maxHeight
+	}
+	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
+}
+
+func (s *Stack) Key(e *termbox.Event) error {
+	return s.elements[s.focus].Key(e)
+}
+
+func (s *Stack) Mouse(e *termbox.Event) error {
+	y := 0
+	for i, h := range s.heights {
+		nextY := y + h
+		if e.MouseY < nextY {
+			e.MouseY -= y
+			s.focus = i
+			return s.elements[i].Mouse(e)
+		}
+		y = nextY
+	}
+	panic("stack Mouse")
+}
+
+func (s *Stack) SetCursor() error {
+	return s.elements[s.focus].SetCursor()
+}
+
+func (s *Stack) Paint() error {
+	for _, e := range s.elements {
+		e.Paint()
+	}
+	return nil
+}
+
+func (s *Stack) ResizeTo(outer screen.Canvas) error {
+	g := s.Geometry()
+	w, h := outer.Size()
+	count := 0
+	for _, eh := range s.elements {
+		g := eh.Geometry()
+		if g.minHeight != g.maxHeight {
+			count += 1
+		}
+	}
+	totalSpare := h - g.minHeight
+	spare := totalSpare / count
+	y := 0
+	for i, eh := range s.elements {
+		g := eh.Geometry()
+		if g.minHeight == g.maxHeight {
+			h := g.minHeight
+			s.heights[i] = h
+			c := screen.NewSubCanvas(outer, 0, y, w, h)
+			eh.ResizeTo(c)
+			y += h
+		} else {
+			h := g.minHeight + spare
+			s.heights[i] = h
+			c := screen.NewSubCanvas(outer, 0, y, w, h)
+			eh.ResizeTo(c)
+			y += h
+		}
+	}
+	return nil
+}
+
 type SideBySide struct {
 	widthA int
 	Focus  EventHandler
 	A, B   EventHandler
+}
+
+func (s *SideBySide) Geometry() Geometry {
+	ga, gb := s.A.Geometry(), s.B.Geometry()
+	minw := ga.minWidth + gb.minWidth
+	maxw := ga.maxWidth + gb.maxWidth
+	minh := bounds.Max(ga.minHeight, gb.minHeight)
+	maxh := bounds.Max(ga.maxHeight, gb.maxHeight)
+	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
 func (s *SideBySide) Key(e *termbox.Event) error {
@@ -233,7 +343,7 @@ func main() {
 
 	page := screen.NewTermboxCanvas()
 
-	edA := NewEditorPanel()
+	edA := NewStack(NewEditorPanel(), NewEditorPanel())
 	edB := NewEditorPanel()
 	eh := NewSideBySide(edA, edB)
 
