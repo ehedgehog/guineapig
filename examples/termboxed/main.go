@@ -221,10 +221,9 @@ func (s *Stack) Geometry() Geometry {
 
 func (s *Stack) Key(e *termbox.Event) error {
 	if e.Ch == 0 && e.Key == termbox.KeyCtrlT {
-		elements := s.elements
-		focus := elements[s.focus]
-		new := focus.New()
-		s.elements = append(elements, new)
+		// elements := s.elements
+		// new := s.generator() // focus.New()
+		s.elements = append(s.elements, s.generator())
 		s.heights = append(s.heights, 0)
 		s.ResizeTo(s.recentSize)
 		return nil
@@ -369,8 +368,8 @@ func main() {
 
 	page := screen.NewTermboxCanvas()
 
-	edA := NewStack(NewEditorPanel, NewEditorPanel(), NewEditorPanel())
-	edB := NewEditorPanel()
+	edA := NewStack(NewEditorPanel, NewEditorPanel())
+	edB := NewStack(NewEditorPanel, NewEditorPanel())
 	eh := NewSideBySide(edA, edB)
 
 	eh.ResizeTo(page)
