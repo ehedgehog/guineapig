@@ -187,23 +187,24 @@ func (ep *EditorPanel) SetCursor() error {
 }
 
 type Stack struct {
+	generator  func() EventHandler
 	elements   []EventHandler
 	heights    []int
 	focus      int
 	recentSize screen.Canvas
 }
 
-func NewStack(elements ...EventHandler) EventHandler {
+func NewStack(generator func() EventHandler, elements ...EventHandler) EventHandler {
 	return &Stack{
-		focus:    0,
-		elements: elements,
-		heights:  make([]int, len(elements)),
+		focus:     0,
+		elements:  elements,
+		generator: generator,
+		heights:   make([]int, len(elements)),
 	}
 }
 
 func (s *Stack) New() EventHandler {
-	panic("Stack.New")
-	return NewStack()
+	return NewStack(s.generator)
 }
 
 func (s *Stack) Geometry() Geometry {
@@ -368,7 +369,7 @@ func main() {
 
 	page := screen.NewTermboxCanvas()
 
-	edA := NewStack(NewEditorPanel(), NewEditorPanel())
+	edA := NewStack(NewEditorPanel, NewEditorPanel(), NewEditorPanel())
 	edB := NewEditorPanel()
 	eh := NewSideBySide(edA, edB)
 
