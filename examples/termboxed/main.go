@@ -186,20 +186,57 @@ func (ep *EditorPanel) SetCursor() error {
 	return nil
 }
 
-type Stack struct {
+type Block struct {
 	generator  func() EventHandler
 	elements   []EventHandler
-	heights    []int
+	bounds     []int
 	focus      int
 	recentSize screen.Canvas
 }
 
+type Stack struct {
+	Block
+}
+
+func (b *Block) SetCursor() error {
+	return b.elements[b.focus].SetCursor()
+}
+
+func (b *Block) Paint() error {
+	for _, e := range b.elements {
+		e.Paint()
+	}
+	return nil
+}
+
+func (b *Shelf) Key(e *termbox.Event) error {
+	if e.Ch == 0 && e.Key == termbox.KeyCtrlT {
+		b.elements = append(b.elements, b.generator())
+		b.bounds = append(b.bounds, 0)
+		b.ResizeTo(b.recentSize)
+		return nil
+	}
+	return b.elements[b.focus].Key(e)
+}
+
+func (b *Stack) Key(e *termbox.Event) error {
+	if e.Ch == 0 && e.Key == termbox.KeyCtrlU {
+		b.elements = append(b.elements, b.generator())
+		b.bounds = append(b.bounds, 0)
+		b.ResizeTo(b.recentSize)
+		return nil
+	}
+	return b.elements[b.focus].Key(e)
+}
+
 func NewStack(generator func() EventHandler, elements ...EventHandler) EventHandler {
 	return &Stack{
-		focus:     0,
-		elements:  elements,
-		generator: generator,
-		heights:   make([]int, len(elements)),
+		Block: Block{
+			focus:     0,
+			elements:  elements,
+			generator: generator,
+			bounds:    make([]int, len(elements)),
+		},
 	}
 }
 
@@ -219,21 +256,9 @@ func (s *Stack) Geometry() Geometry {
 	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
-func (s *Stack) Key(e *termbox.Event) error {
-	if e.Ch == 0 && e.Key == termbox.KeyCtrlT {
-		// elements := s.elements
-		// new := s.generator() // focus.New()
-		s.elements = append(s.elements, s.generator())
-		s.heights = append(s.heights, 0)
-		s.ResizeTo(s.recentSize)
-		return nil
-	}
-	return s.elements[s.focus].Key(e)
-}
-
 func (s *Stack) Mouse(e *termbox.Event) error {
 	y := 0
-	for i, h := range s.heights {
+	for i, h := range s.bounds {
 		nextY := y + h
 		if e.MouseY < nextY {
 			e.MouseY -= y
@@ -243,17 +268,6 @@ func (s *Stack) Mouse(e *termbox.Event) error {
 		y = nextY
 	}
 	panic("stack Mouse")
-}
-
-func (s *Stack) SetCursor() error {
-	return s.elements[s.focus].SetCursor()
-}
-
-func (s *Stack) Paint() error {
-	for _, e := range s.elements {
-		e.Paint()
-	}
-	return nil
 }
 
 func (s *Stack) ResizeTo(outer screen.Canvas) error {
@@ -273,16 +287,94 @@ func (s *Stack) ResizeTo(outer screen.Canvas) error {
 		g := eh.Geometry()
 		if g.minHeight == g.maxHeight {
 			h := g.minHeight
-			s.heights[i] = h
+			s.bounds[i] = h
 			c := screen.NewSubCanvas(outer, 0, y, w, h)
 			eh.ResizeTo(c)
 			y += h
 		} else {
 			h := g.minHeight + spare
-			s.heights[i] = h
+			s.bounds[i] = h
 			c := screen.NewSubCanvas(outer, 0, y, w, h)
 			eh.ResizeTo(c)
 			y += h
+		}
+	}
+	s.recentSize = outer
+	return nil
+}
+
+type Shelf struct {
+	Block
+}
+
+func NewShelf(generator func() EventHandler, elements ...EventHandler) EventHandler {
+	return &Shelf{
+		Block: Block{
+			focus:     0,
+			elements:  elements,
+			generator: generator,
+			bounds:    make([]int, len(elements)),
+		},
+	}
+}
+
+func (s *Shelf) New() EventHandler {
+	return NewShelf(s.generator)
+}
+
+func (s *Shelf) Geometry() Geometry {
+	minw, maxw, minh, maxh := 0, 0, 0, 0
+	for _, eh := range s.elements {
+		g := eh.Geometry()
+		minh = bounds.Max(minh, g.minHeight)
+		maxh = bounds.Max(maxh, g.maxHeight)
+		minw = minw + g.minWidth
+		maxw = maxw + g.maxWidth
+	}
+	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
+}
+
+func (s *Shelf) Mouse(e *termbox.Event) error {
+	x := 0
+	for i, w := range s.bounds {
+		nextX := x + w
+		if e.MouseX < nextX {
+			e.MouseX -= x
+			s.focus = i
+			return s.elements[i].Mouse(e)
+		}
+		x = nextX
+	}
+	panic("shelf Mouse")
+}
+
+func (s *Shelf) ResizeTo(outer screen.Canvas) error {
+	g := s.Geometry()
+	w, h := outer.Size()
+	count := 0
+	for _, eh := range s.elements {
+		g := eh.Geometry()
+		if g.minWidth != g.maxWidth {
+			count += 1
+		}
+	}
+	totalSpare := w - g.minWidth
+	spare := totalSpare / count
+	x := 0
+	for i, eh := range s.elements {
+		g := eh.Geometry()
+		if g.minWidth == g.maxWidth {
+			w := g.minWidth
+			s.bounds[i] = w
+			c := screen.NewSubCanvas(outer, x, 0, w, h)
+			eh.ResizeTo(c)
+			x += w
+		} else {
+			w := g.minWidth + spare
+			s.bounds[i] = w
+			c := screen.NewSubCanvas(outer, x, 0, w, h)
+			eh.ResizeTo(c)
+			x += w
 		}
 	}
 	s.recentSize = outer
@@ -369,8 +461,13 @@ func main() {
 	page := screen.NewTermboxCanvas()
 
 	edA := NewStack(NewEditorPanel, NewEditorPanel())
-	edB := NewStack(NewEditorPanel, NewEditorPanel())
-	eh := NewSideBySide(edA, edB)
+	// edB := NewStack(NewEditorPanel, NewEditorPanel())
+	//	eh := NewSideBySide(edA, edB)
+
+	eh := NewShelf(func() EventHandler {
+		return NewStack(NewEditorPanel, NewEditorPanel())
+	},
+		edA)
 
 	eh.ResizeTo(page)
 
