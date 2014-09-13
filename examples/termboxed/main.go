@@ -22,6 +22,7 @@ type EventHandler interface {
 	Paint() error
 	SetCursor() error
 	Geometry() Geometry
+	New() EventHandler
 }
 
 type Loc struct {
@@ -57,6 +58,10 @@ func NewEditorPanel() EventHandler {
 	}
 	ep.focusBuffer = &ep.mainBuffer
 	return ep
+}
+
+func (ep *EditorPanel) New() EventHandler {
+	return NewEditorPanel()
 }
 
 func (ep *EditorPanel) Key(e *termbox.Event) error {
@@ -182,9 +187,10 @@ func (ep *EditorPanel) SetCursor() error {
 }
 
 type Stack struct {
-	elements []EventHandler
-	heights  []int
-	focus    int
+	elements   []EventHandler
+	heights    []int
+	focus      int
+	recentSize screen.Canvas
 }
 
 func NewStack(elements ...EventHandler) EventHandler {
@@ -193,6 +199,11 @@ func NewStack(elements ...EventHandler) EventHandler {
 		elements: elements,
 		heights:  make([]int, len(elements)),
 	}
+}
+
+func (s *Stack) New() EventHandler {
+	panic("Stack.New")
+	return NewStack()
 }
 
 func (s *Stack) Geometry() Geometry {
@@ -208,6 +219,15 @@ func (s *Stack) Geometry() Geometry {
 }
 
 func (s *Stack) Key(e *termbox.Event) error {
+	if e.Ch == 0 && e.Key == termbox.KeyCtrlT {
+		elements := s.elements
+		focus := elements[s.focus]
+		new := focus.New()
+		s.elements = append(elements, new)
+		s.heights = append(s.heights, 0)
+		s.ResizeTo(s.recentSize)
+		return nil
+	}
 	return s.elements[s.focus].Key(e)
 }
 
@@ -265,6 +285,7 @@ func (s *Stack) ResizeTo(outer screen.Canvas) error {
 			y += h
 		}
 	}
+	s.recentSize = outer
 	return nil
 }
 
@@ -330,6 +351,10 @@ func (s *SideBySide) SetCursor() error {
 
 func NewSideBySide(A, B EventHandler) EventHandler {
 	return &SideBySide{0, A, A, B}
+}
+
+func (s *SideBySide) New() EventHandler {
+	panic("SideBySide.New")
 }
 
 func main() {
