@@ -52,9 +52,12 @@ func (ep *EditorPanel) Geometry() Geometry {
 
 func NewEditorPanel() EventHandler {
 	ep := &EditorPanel{
-		mainBuffer: buffer.New(0, 0),
-		lineBuffer: buffer.New(0, 0),
-		where:      Loc{0, 0},
+		mainBuffer: buffer.New(func(b buffer.Type, s string) {}, 0, 0),
+		lineBuffer: buffer.New(func(b buffer.Type, s string) {
+			c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
+			screen.PutString(c, 0, 0, "BOOM", screen.DefaultStyle)
+		}, 0, 0),
+		where: Loc{0, 0},
 	}
 	ep.focusBuffer = &ep.mainBuffer
 	return ep
@@ -85,7 +88,11 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		case termbox.KeyArrowLeft:
 			b.BackOne()
 		case termbox.KeyEnter:
-			b.Return()
+			if ep.focusBuffer == &ep.mainBuffer {
+				b.Return()
+			} else {
+				b.Execute()
+			}
 		case termbox.KeyArrowRight:
 			b.ForwardOne()
 		case termbox.KeyArrowUp:

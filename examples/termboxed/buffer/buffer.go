@@ -11,6 +11,7 @@ type Type interface {
 	DownOne()
 	ForwardOne()
 	Return()
+	Execute()
 	PutLines(c screen.Canvas, first, n int)
 	SetWhere(col, row int)
 	Where() (col, row int)
@@ -20,9 +21,10 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content []string // existing lines of text
-	line    int      // current line number (index inside content)
-	col     int      // current column number (index inside current line)
+	content []string           // existing lines of text
+	line    int                // current line number (index inside content)
+	col     int                // current column number (index inside current line)
+	execute func(Type, string) // execute command on buffer at line
 }
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
@@ -54,6 +56,11 @@ func (b *SimpleBuffer) Insert(ch rune) {
 
 	b.col += 1
 	b.content[b.line] = string(D)
+}
+
+func (b *SimpleBuffer) Execute() {
+	b.makeRoom()
+	b.execute(b, b.content[b.line])
 }
 
 func (b *SimpleBuffer) Return() {
@@ -127,6 +134,9 @@ func (s *SimpleBuffer) SetWhere(col, row int) {
 	s.col, s.line = col, row
 }
 
-func New(w, h int) Type {
-	return &SimpleBuffer{content: []string{}}
+func New(execute func(Type, string), w, h int) Type {
+	return &SimpleBuffer{
+		content: []string{},
+		execute: execute,
+	}
 }
