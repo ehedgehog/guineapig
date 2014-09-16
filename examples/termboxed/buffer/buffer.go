@@ -1,5 +1,10 @@
 package buffer
 
+import (
+	"bytes"
+	"io"
+	"unicode/utf8"
+)
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
 type Type interface {
@@ -16,6 +21,7 @@ type Type interface {
 	SetWhere(col, row int)
 	Where() (col, row int)
 	Expose() (line int, content []string) // attempt to eliminate?
+	ReadFrom(r io.Reader)
 }
 
 // SimpleBuffer is a simplistic implementation of
@@ -29,6 +35,21 @@ type SimpleBuffer struct {
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
 	return b.line, b.content
+}
+
+func (b *SimpleBuffer) ReadFrom(r io.Reader) {
+	var x bytes.Buffer
+	x.ReadFrom(r)
+	all := x.Bytes()
+	for len(all) > 0 {
+		ch, size := utf8.DecodeRune(all)
+		if ch == '\n' {
+			b.Return()
+		} else {
+			b.Insert(ch)
+		}
+		all = all[size:]
+	}
 }
 
 func (b *SimpleBuffer) makeRoom() {

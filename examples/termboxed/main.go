@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+	"strings"
+)
 
 import "github.com/nsf/termbox-go"
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
@@ -50,12 +54,35 @@ func (ep *EditorPanel) Geometry() Geometry {
 	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
+func readIntoBuffer(b buffer.Type, fileName string) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	b.ReadFrom(f)
+}
+
+var commands = map[string]func(buffer.Type, []string){
+	"r": func(b buffer.Type, blobs []string) {
+		readIntoBuffer(b, blobs[1])
+	},
+}
+
 func NewEditorPanel() EventHandler {
+	mb := buffer.New(func(b buffer.Type, s string) {}, 0, 0)
 	ep := &EditorPanel{
-		mainBuffer: buffer.New(func(b buffer.Type, s string) {}, 0, 0),
+		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
 		lineBuffer: buffer.New(func(b buffer.Type, s string) {
-			c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
-			screen.PutString(c, 0, 0, "BOOM", screen.DefaultStyle)
+			line, content := b.Expose()
+			blobs := strings.Split(content[line], " ")
+			// c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
+			command := commands[blobs[0]]
+			if command == nil {
+			} else {
+				command(mb, blobs)
+			}
+			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}, 0, 0),
 		where: Loc{0, 0},
 	}
