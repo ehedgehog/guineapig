@@ -1,0 +1,28 @@
+TODO
+
+placement of cursor following vertical scrolling
+horizontal scrolling
+placement of cursor folloing horizontal movement
+search (plain; regexp)
+mouse distinguish left/right click and shift/ctrl/alt modifiers
+write to file
+read file / insert file / new buffer from file
+display messages somewhere
+page up/down movement
+line beginning/end movement
+token highlighting
+menus
+delete line(s)
+mark text ranges
+delete marked range(s)
+write marked range(s)
+warning markers following analysis
+run code over buffer
+read config file
+do less (re-)copying and page building
+ls command
+trim command arguments
+distinguish word commands (eg "ls") and character commands (eg "/")
+edit command language ([if|then|else], (while|do), this;that, (...)) ...
+
+DONE

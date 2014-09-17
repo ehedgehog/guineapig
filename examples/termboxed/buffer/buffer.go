@@ -1,10 +1,10 @@
 package buffer
 
 import (
-	"bytes"
+	"bufio"
 	"io"
-	"unicode/utf8"
 )
+
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
 type Type interface {
@@ -38,18 +38,26 @@ func (b *SimpleBuffer) Expose() (line int, content []string) {
 }
 
 func (b *SimpleBuffer) ReadFrom(r io.Reader) {
-	var x bytes.Buffer
-	x.ReadFrom(r)
-	all := x.Bytes()
-	for len(all) > 0 {
-		ch, size := utf8.DecodeRune(all)
-		if ch == '\n' {
-			b.Return()
-		} else {
-			b.Insert(ch)
+	/*
+		var x bytes.Buffer
+		x.ReadFrom(r)
+		all := x.Bytes()
+		for len(all) > 0 {
+			ch, size := utf8.DecodeRune(all)
+			if ch == '\n' {
+				b.Return()
+			} else {
+				b.Insert(ch)
+			}
+			all = all[size:]
 		}
-		all = all[size:]
+	*/
+	scanner := bufio.NewScanner(r)
+	for scanner.Scan() {
+		line := scanner.Text()
+		b.content = append(b.content, line)
 	}
+	b.line = 0
 }
 
 func (b *SimpleBuffer) makeRoom() {
