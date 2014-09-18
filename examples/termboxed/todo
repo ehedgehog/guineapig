@@ -1,6 +1,13 @@
 TODO
 
 buffer tests
+	buffer motion tests
+	buffer content tests
+	buffer reading tests
+	buffer writing tests
+	buffer display tests
+	buffer execute tests
+
 placement of cursor following vertical scrolling
 horizontal scrolling
 placement of cursor folloing horizontal movement
