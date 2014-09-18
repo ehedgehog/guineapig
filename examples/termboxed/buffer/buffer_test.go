@@ -7,12 +7,13 @@ func TestCanCreateBuffer(t *testing.T) {
 		width  = 80
 		height = 50
 	)
-	b := New(width, height).(*SimpleBuffer)
+	b := New(execFunction, width, height).(*SimpleBuffer)
 	eq(t, "should be at line 0", b.line, 0)
 	eq(t, "should be at column 0", b.col, 0)
-	eq(t, "should have no scroll offset", b.verticalOffset, 0)
-	eq(t, "should have given width", b.width, width)
-	eq(t, "should have given height", b.height, height)
+}
+
+func execFunction(b Type, args string) {
+	// nothing (yet)
 }
 
 func eq(t *testing.T, oops string, a, b interface{}) {
