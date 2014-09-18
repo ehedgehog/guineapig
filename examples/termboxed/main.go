@@ -70,7 +70,7 @@ var commands = map[string]func(buffer.Type, []string){
 }
 
 func NewEditorPanel() EventHandler {
-	mb := buffer.New(func(b buffer.Type, s string) {}, 0, 0)
+	mb := buffer.New(func(b buffer.Type, s string) {})
 	ep := &EditorPanel{
 		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
 		lineBuffer: buffer.New(func(b buffer.Type, s string) {
@@ -83,7 +83,7 @@ func NewEditorPanel() EventHandler {
 				command(mb, blobs)
 			}
 			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
-		}, 0, 0),
+		}),
 		where: Loc{0, 0},
 	}
 	ep.focusBuffer = &ep.mainBuffer

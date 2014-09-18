@@ -163,7 +163,7 @@ func (s *SimpleBuffer) SetWhere(col, row int) {
 	s.col, s.line = col, row
 }
 
-func New(execute func(Type, string), w, h int) Type {
+func New(execute func(Type, string)) Type {
 	return &SimpleBuffer{
 		content: []string{},
 		execute: execute,
