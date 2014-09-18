@@ -12,6 +12,10 @@ func TestCanCreateBuffer(t *testing.T) {
 	eq(t, "should be at column 0", b.col, 0)
 }
 
+func TestZOB(t *testing.T) {
+
+}
+
 func execFunction(b Type, args string) {
 	// nothing (yet)
 }
