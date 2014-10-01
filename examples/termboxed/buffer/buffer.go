@@ -6,6 +6,7 @@ import (
 )
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
+import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Type interface {
 	Insert(ch rune)
@@ -18,8 +19,8 @@ type Type interface {
 	Return()
 	Execute()
 	PutLines(c screen.Canvas, first, n int)
-	SetWhere(col, row int)
-	Where() (col, row int)
+	SetWhere(where grid.LineCol)
+	Where() grid.LineCol
 	Expose() (line int, content []string) // attempt to eliminate?
 	ReadFrom(r io.Reader)
 }
@@ -28,13 +29,12 @@ type Type interface {
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
 	content []string           // existing lines of text
-	line    int                // current line number (index inside content)
-	col     int                // current column number (index inside current line)
+	where   grid.LineCol       // current location in buffer (line, column)
 	execute func(Type, string) // execute command on buffer at line
 }
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
-	return b.line, b.content
+	return b.where.Line, b.content
 }
 
 func (b *SimpleBuffer) ReadFrom(r io.Reader) {
@@ -57,17 +57,18 @@ func (b *SimpleBuffer) ReadFrom(r io.Reader) {
 		line := scanner.Text()
 		b.content = append(b.content, line)
 	}
-	b.line = 0
+	b.where.Line = 0
 }
 
 func (b *SimpleBuffer) makeRoom() {
-	if b.line >= len(b.content) {
-		content := make([]string, b.line+1)
+	line, col := b.where.Line, b.where.Col
+	if line >= len(b.content) {
+		content := make([]string, line+1)
 		copy(content, b.content)
 		b.content = content
 	}
-	for b.col > len(b.content[b.line]) {
-		b.content[b.line] += "        "
+	for col > len(b.content[line]) {
+		b.content[line] += "        "
 	}
 }
 
@@ -75,21 +76,21 @@ func (b *SimpleBuffer) Insert(ch rune) {
 
 	b.makeRoom()
 
-	loc := b.col
-	runes := []rune(b.content[b.line])
+	loc := b.where.Col
+	runes := []rune(b.content[b.where.Line])
 
 	A := []rune{}
 	B := append(A, runes[0:loc]...)
 	C := append(B, ch)
 	D := append(C, runes[loc:]...)
 
-	b.col += 1
-	b.content[b.line] = string(D)
+	b.where.Col += 1
+	b.content[b.where.Line] = string(D)
 }
 
 func (b *SimpleBuffer) Execute() {
 	b.makeRoom()
-	b.execute(b, b.content[b.line])
+	b.execute(b, b.content[b.where.Line])
 }
 
 func (b *SimpleBuffer) Return() {
@@ -98,45 +99,47 @@ func (b *SimpleBuffer) Return() {
 
 	lines := append(b.content, "")
 
-	right := lines[b.line][b.col:]
-	left := lines[b.line][0:b.col]
+	line, col := b.where.Line, b.where.Col
+	right := lines[line][col:]
+	left := lines[line][0:col]
 
-	copy(lines[b.line+1:], lines[b.line:])
-	lines[b.line] = left
-	lines[b.line+1] = right
+	copy(lines[line+1:], lines[line:])
+	lines[line] = left
+	lines[line+1] = right
 	b.DownOne() // b.line += 1
-	b.col = 0
+	b.where.Col = 0
 	b.content = lines
 }
 
 func (b *SimpleBuffer) UpOne() {
-	if b.line > 0 {
-		b.line -= 1
+	if b.where.Line > 0 {
+		b.where.Line -= 1
 	}
 }
 
 func (b *SimpleBuffer) DownOne() {
-	b.line += 1
+	b.where.Line += 1
 }
 
 func (b *SimpleBuffer) BackOne() {
-	if b.col > 0 {
-		b.col -= 1
+	if b.where.Col > 0 {
+		b.where.Col -= 1
 	}
 }
 
 func (b *SimpleBuffer) ForwardOne() {
-	b.col += 1
+	b.where.Col += 1
 }
 
 func (b *SimpleBuffer) DeleteBack() {
 	b.makeRoom()
-	if b.col > 0 {
-		content := b.content[b.line]
-		before := content[0 : b.col-1]
-		after := content[b.col:]
+	line, col := b.where.Line, b.where.Col
+	if col > 0 {
+		content := b.content[line]
+		before := content[0 : col-1]
+		after := content[col:]
 		newContent := before + after
-		b.content[b.line] = newContent
+		b.content[line] = newContent
 		b.BackOne()
 	}
 }
@@ -155,12 +158,12 @@ func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	}
 }
 
-func (s *SimpleBuffer) Where() (col, row int) {
-	return s.col, s.line
+func (s *SimpleBuffer) Where() grid.LineCol {
+	return s.where
 }
 
-func (s *SimpleBuffer) SetWhere(col, row int) {
-	s.col, s.line = col, row
+func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
+	s.where = where
 }
 
 func New(execute func(Type, string)) Type {

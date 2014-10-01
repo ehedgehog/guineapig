@@ -1,13 +1,16 @@
 package screen
 
-import "github.com/nsf/termbox-go"
+import (
+	"github.com/ehedgehog/guineapig/examples/termboxed/grid"
+	"github.com/nsf/termbox-go"
+)
 
 ////////////////////////////////////////////////////////////////
 
 type Canvas interface {
 	Size() (w, h int)
 	SetCell(x, y int, ch rune, s Style)
-	SetCursor(x, y int)
+	SetCursor(where grid.LineCol)
 }
 
 type Style interface {
@@ -60,8 +63,8 @@ func (t *TermboxCanvas) Size() (w, h int) {
 	return t.width, t.height
 }
 
-func (t *TermboxCanvas) SetCursor(x, y int) {
-	termbox.SetCursor(x, y)
+func (t *TermboxCanvas) SetCursor(where grid.LineCol) {
+	termbox.SetCursor(where.Col, where.Line)
 }
 
 func (t *TermboxCanvas) SetCell(x, y int, glyph rune, s Style) {
@@ -71,27 +74,26 @@ func (t *TermboxCanvas) SetCell(x, y int, glyph rune, s Style) {
 ///////////////////////////////////////////////////////////////
 
 type SubCanvas struct {
-	outer   Canvas
-	xOffset int
-	yOffset int
-	width   int
-	height  int
+	outer  Canvas
+	offset grid.LineCol
+	width  int
+	height int
 }
 
 func (s *SubCanvas) Size() (w, h int) {
 	return s.width, s.height
 }
 
-func (s *SubCanvas) SetCursor(x, y int) {
-	s.outer.SetCursor(x+s.xOffset, y+s.yOffset)
+func (s *SubCanvas) SetCursor(where grid.LineCol) {
+	s.outer.SetCursor(where.Plus(s.offset))
 }
 
 func (s *SubCanvas) SetCell(x, y int, glyph rune, st Style) {
-	s.outer.SetCell(x+s.xOffset, y+s.yOffset, glyph, st)
+	s.outer.SetCell(x+s.offset.Col, y+s.offset.Line, glyph, st)
 }
 
 func NewSubCanvas(outer Canvas, dx, dy, w, h int) Canvas {
-	return &SubCanvas{outer, dx, dy, w, h}
+	return &SubCanvas{outer, grid.LineCol{Col: dx, Line: dy}, w, h}
 }
 
 ///////////////////////////////////////////////////////////////

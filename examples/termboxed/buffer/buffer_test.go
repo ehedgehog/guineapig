@@ -39,6 +39,15 @@ func TestSequence(t *testing.T) {
 	seq.test(b)
 }
 
+func TestSequenceDifferently(t *testing.T) {
+	b := New(execFunction)
+	b.ForwardOne()
+	b.(*SimpleBuffer).makeRoom()
+	col, line := b.Where()
+	eq(t, "should be at first line", line, 0)
+	eq(t, "should be one char along", col, 1)
+}
+
 func TestInsertCharacterInEmptyBuffer(t *testing.T) {
 	b := New(execFunction)
 	b.Insert('1')

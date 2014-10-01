@@ -11,6 +11,7 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
+import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Geometry struct {
 	minWidth  int
@@ -29,10 +30,6 @@ type EventHandler interface {
 	New() EventHandler
 }
 
-type Loc struct {
-	X, Y int
-}
-
 type EditorPanel struct {
 	topBar         screen.Canvas
 	bottomBar      screen.Canvas
@@ -43,7 +40,7 @@ type EditorPanel struct {
 	lineBuffer     buffer.Type
 	focusBuffer    *buffer.Type
 	verticalOffset int
-	where          Loc
+	where          grid.LineCol
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -84,7 +81,7 @@ func NewEditorPanel() EventHandler {
 			}
 			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}),
-		where: Loc{0, 0},
+		where: grid.LineCol{Line: 0, Col: 0},
 	}
 	ep.focusBuffer = &ep.mainBuffer
 	return ep
@@ -142,10 +139,10 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	x, y := e.MouseX, e.MouseY
 	w, h := ep.textBox.Size()
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
-		ep.mainBuffer.SetWhere(x-1, y-1)
+		ep.mainBuffer.SetWhere(grid.LineCol{y - 1, x - 1})
 		ep.focusBuffer = &ep.mainBuffer
 	} else if x >= delta && y == 0 {
-		ep.lineBuffer.SetWhere(x-delta, 0)
+		ep.lineBuffer.SetWhere(grid.LineCol{0, x - delta})
 		ep.focusBuffer = &ep.lineBuffer
 	}
 	return nil
@@ -211,11 +208,11 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.focusBuffer == &ep.mainBuffer {
-		x, y := ep.mainBuffer.Where()
-		ep.textBox.SetCursor(x, y)
+		where := ep.mainBuffer.Where()
+		ep.textBox.SetCursor(where)
 	} else {
-		x, _ := ep.lineBuffer.Where()
-		ep.topBar.SetCursor(x+delta, 0)
+		where := ep.lineBuffer.Where()
+		ep.topBar.SetCursor(where.ColPlus(delta))
 	}
 	return nil
 }
