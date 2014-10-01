@@ -39,7 +39,7 @@ func TestSequence(t *testing.T) {
 	seq.test(b)
 }
 
-func TestSequenceDifferently(t *testing.T) {
+func TestSequence(t *testing.T) {
 	b := New(execFunction)
 	b.ForwardOne()
 	b.(*SimpleBuffer).makeRoom()

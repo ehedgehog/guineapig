@@ -2,6 +2,7 @@ package draw
 
 import (
 	"github.com/ehedgehog/guineapig/examples/termboxed/bounds"
+	"github.com/ehedgehog/guineapig/examples/termboxed/grid"
 	"github.com/ehedgehog/guineapig/examples/termboxed/screen"
 )
 
@@ -32,13 +33,14 @@ const (
 func Scrollbar(sw screen.Canvas, s ScrollInfo) {
 	//
 
-	_, h := sw.Size()
+	size := sw.Size()
+	h := size.Height
 
 	contentSize := s.Lines
 	currentLineIndex := s.OnLine
 
 	for yy := 0; yy < h; yy += 1 {
-		sw.SetCell(0, yy, Glyph_vbar, screen.DefaultStyle)
+		sw.SetCell(grid.LineCol{Col: 0, Line: yy}, Glyph_vbar, screen.DefaultStyle)
 	}
 
 	if contentSize < h {
@@ -49,7 +51,7 @@ func Scrollbar(sw screen.Canvas, s ScrollInfo) {
 	y := topOffset
 	bigy := h - 1 - botOffset
 
-	sw.SetCell(0, y, Glyph_pin, screen.DefaultStyle)
+	sw.SetCell(grid.LineCol{Col: 0, Line: y}, Glyph_pin, screen.DefaultStyle)
 	//
 
 	y += 1
@@ -60,16 +62,16 @@ func Scrollbar(sw screen.Canvas, s ScrollInfo) {
 
 	//
 	for yy := y; yy < y+downset; yy += 1 {
-		sw.SetCell(0, yy, ' ', screen.DefaultStyle)
+		sw.SetCell(grid.LineCol{Col: 0, Line: yy}, ' ', screen.DefaultStyle)
 	}
 
 	for yy := y + downset; yy < y+downset+barSize; yy += 1 {
-		sw.SetCell(0, yy, ' ', screen.StyleBackCyan)
+		sw.SetCell(grid.LineCol{Col: 0, Line: yy}, ' ', screen.StyleBackCyan)
 	}
 
 	for yy := y + downset + barSize; yy < bigy; yy += 1 {
-		sw.SetCell(0, yy, ' ', screen.DefaultStyle)
+		sw.SetCell(grid.LineCol{Col: 0, Line: yy}, ' ', screen.DefaultStyle)
 	}
 	//
-	sw.SetCell(0, bigy, Glyph_T, screen.DefaultStyle)
+	sw.SetCell(grid.LineCol{Col: 0, Line: bigy}, Glyph_T, screen.DefaultStyle)
 }

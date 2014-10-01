@@ -8,8 +8,8 @@ import (
 ////////////////////////////////////////////////////////////////
 
 type Canvas interface {
-	Size() (w, h int)
-	SetCell(x, y int, ch rune, s Style)
+	Size() grid.Size
+	SetCell(where grid.LineCol, ch rune, s Style)
 	SetCursor(where grid.LineCol)
 }
 
@@ -36,13 +36,14 @@ var StyleBackCyan = &StyleStruct{termbox.ColorDefault, termbox.ColorCyan}
 
 func PutString(c Canvas, x, y int, content string, s Style) {
 	i := 0
-	w, _ := c.Size()
+	size := c.Size()
+	w := size.Width
 	limit := w - x
 	for _, ch := range content {
 		if i > limit {
 			break
 		}
-		c.SetCell(x+i, y, ch, s)
+		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, s)
 		i += 1
 	}
 }
@@ -50,25 +51,24 @@ func PutString(c Canvas, x, y int, content string, s Style) {
 ///////////////////////////////////////////////////////////////
 
 type TermboxCanvas struct {
-	width  int
-	height int
+	size grid.Size
 }
 
 func NewTermboxCanvas() *TermboxCanvas {
 	w, h := termbox.Size()
-	return &TermboxCanvas{w, h}
+	return &TermboxCanvas{grid.Size{Width: w, Height: h}}
 }
 
-func (t *TermboxCanvas) Size() (w, h int) {
-	return t.width, t.height
+func (t *TermboxCanvas) Size() grid.Size {
+	return t.size
 }
 
 func (t *TermboxCanvas) SetCursor(where grid.LineCol) {
 	termbox.SetCursor(where.Col, where.Line)
 }
 
-func (t *TermboxCanvas) SetCell(x, y int, glyph rune, s Style) {
-	termbox.SetCell(x, y, glyph, s.Foreground(), s.Background())
+func (t *TermboxCanvas) SetCell(where grid.LineCol, glyph rune, s Style) {
+	termbox.SetCell(where.Col, where.Line, glyph, s.Foreground(), s.Background())
 }
 
 ///////////////////////////////////////////////////////////////
@@ -76,24 +76,23 @@ func (t *TermboxCanvas) SetCell(x, y int, glyph rune, s Style) {
 type SubCanvas struct {
 	outer  Canvas
 	offset grid.LineCol
-	width  int
-	height int
+	size   grid.Size
 }
 
-func (s *SubCanvas) Size() (w, h int) {
-	return s.width, s.height
+func (s *SubCanvas) Size() grid.Size {
+	return s.size
 }
 
 func (s *SubCanvas) SetCursor(where grid.LineCol) {
 	s.outer.SetCursor(where.Plus(s.offset))
 }
 
-func (s *SubCanvas) SetCell(x, y int, glyph rune, st Style) {
-	s.outer.SetCell(x+s.offset.Col, y+s.offset.Line, glyph, st)
+func (s *SubCanvas) SetCell(where grid.LineCol, glyph rune, st Style) {
+	s.outer.SetCell(where.Plus(s.offset), glyph, st)
 }
 
 func NewSubCanvas(outer Canvas, dx, dy, w, h int) Canvas {
-	return &SubCanvas{outer, grid.LineCol{Col: dx, Line: dy}, w, h}
+	return &SubCanvas{outer, grid.LineCol{Col: dx, Line: dy}, grid.Size{Width: w, Height: h}}
 }
 
 ///////////////////////////////////////////////////////////////

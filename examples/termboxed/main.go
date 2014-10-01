@@ -137,7 +137,8 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	x, y := e.MouseX, e.MouseY
-	w, h := ep.textBox.Size()
+	size := ep.textBox.Size()
+	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
 		ep.mainBuffer.SetWhere(grid.LineCol{y - 1, x - 1})
 		ep.focusBuffer = &ep.mainBuffer
@@ -150,7 +151,8 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 
 func (ep *EditorPanel) AdjustScrolling() {
 	line, _ := ep.mainBuffer.Expose()
-	_, h := ep.textBox.Size()
+	size := ep.textBox.Size()
+	h := size.Height
 	if line < ep.verticalOffset {
 		ep.verticalOffset = line
 	}
@@ -161,28 +163,31 @@ func (ep *EditorPanel) AdjustScrolling() {
 
 func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
-	w, _ := ep.bottomBar.Size()
+	bottomSize := ep.bottomBar.Size()
+	w := bottomSize.Width
 	line, content := ep.mainBuffer.Expose()
-	_, textHeight := ep.textBox.Size()
+	textBoxSize := ep.textBox.Size()
+	textHeight := textBoxSize.Height
 	ep.mainBuffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
 	//
-	ep.bottomBar.SetCell(0, 0, draw.Glyph_corner_bl, screen.DefaultStyle)
+	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
-		ep.bottomBar.SetCell(i, 0, draw.Glyph_hbar, screen.DefaultStyle)
+		ep.bottomBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
 	}
-	ep.bottomBar.SetCell(w-1, 0, draw.Glyph_corner_br, screen.DefaultStyle)
+	ep.bottomBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
 	//
-	_, lh := ep.leftBar.Size()
+	leftBarSize := ep.leftBar.Size()
+	lh := leftBarSize.Height
 	for j := 0; j < lh; j += 1 {
-		ep.leftBar.SetCell(0, j, draw.Glyph_vbar, screen.DefaultStyle)
+		ep.leftBar.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
 	}
 	//
-	ep.topBar.SetCell(0, 0, draw.Glyph_corner_tl, screen.DefaultStyle)
+	ep.topBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
-		ep.topBar.SetCell(i, 0, draw.Glyph_hbar, screen.DefaultStyle)
+		ep.topBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
 	}
 	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
-	ep.topBar.SetCell(w-1, 0, draw.Glyph_corner_tr, screen.DefaultStyle)
+	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
 	// HACK -- shouldn't need to remake each time
 	tline, _ := ep.lineBuffer.Expose()
@@ -197,7 +202,8 @@ func (ep *EditorPanel) Paint() error {
 const delta = 5
 
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
-	w, h := outer.Size()
+	size := outer.Size()
+	w, h := size.Width, size.Height
 	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
 	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
 	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, 1)
@@ -303,7 +309,8 @@ func (s *Stack) Mouse(e *termbox.Event) error {
 
 func (s *Stack) ResizeTo(outer screen.Canvas) error {
 	g := s.Geometry()
-	w, h := outer.Size()
+	size := outer.Size()
+	w, h := size.Width, size.Height
 	count := 0
 	for _, eh := range s.elements {
 		g := eh.Geometry()
@@ -381,7 +388,8 @@ func (s *Shelf) Mouse(e *termbox.Event) error {
 
 func (s *Shelf) ResizeTo(outer screen.Canvas) error {
 	g := s.Geometry()
-	w, h := outer.Size()
+	size := outer.Size()
+	w, h := size.Width, size.Height
 	count := 0
 	for _, eh := range s.elements {
 		g := eh.Geometry()
@@ -453,7 +461,8 @@ func (s *SideBySide) Mouse(e *termbox.Event) error {
 }
 
 func (s *SideBySide) ResizeTo(outer screen.Canvas) error {
-	w, h := outer.Size()
+	size := outer.Size()
+	w, h := size.Width, size.Height
 	aw := w / 2
 	bw := w - aw
 	s.widthA = aw
