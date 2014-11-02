@@ -7,7 +7,7 @@ type LineCol struct {
 }
 
 func (where LineCol) ColPlus(dCol int) LineCol {
-	return LineCol{where.Col + dCol, where.Line}
+	return LineCol{Col: where.Col + dCol, Line: where.Line}
 }
 
 func (where LineCol) Plus(offset LineCol) LineCol {
