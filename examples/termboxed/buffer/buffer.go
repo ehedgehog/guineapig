@@ -3,6 +3,7 @@ package buffer
 import (
 	"bufio"
 	"io"
+	"os"
 )
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
@@ -22,22 +23,41 @@ type Type interface {
 	SetWhere(where grid.LineCol)
 	Where() grid.LineCol
 	Expose() (line int, content []string) // attempt to eliminate?
-	ReadFrom(r io.Reader)
+	ReadFromFile(fileName string, r io.Reader)
+	WriteToFile(fileName []string)
 }
 
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content []string           // existing lines of text
-	where   grid.LineCol       // current location in buffer (line, column)
-	execute func(Type, string) // execute command on buffer at line
+	content  []string           // existing lines of text
+	where    grid.LineCol       // current location in buffer (line, column)
+	execute  func(Type, string) // execute command on buffer at line
+	fileName string             // file name used for most recent read
 }
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
 	return b.where.Line, b.content
 }
 
-func (b *SimpleBuffer) ReadFrom(r io.Reader) {
+func (b *SimpleBuffer) WriteToFile(fileNameOption []string) {
+	fileName := b.fileName
+	if len(fileNameOption) > 0 {
+		fileName = fileNameOption[0]
+	}
+	f, err := os.Create(fileName)
+	if err == nil {
+		// horrid. couldn't we at least contrive to call WriteString?
+		// or use bufio and buffer up the bytes?
+		defer f.Close()
+		for _, line := range b.content {
+			f.Write([]byte(line))
+			f.Write([]byte{'\n'})
+		}
+	}
+}
+
+func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) {
 	/*
 		var x bytes.Buffer
 		x.ReadFrom(r)

@@ -57,12 +57,15 @@ func readIntoBuffer(b buffer.Type, fileName string) {
 		panic(err)
 	}
 	defer f.Close()
-	b.ReadFrom(f)
+	b.ReadFromFile(fileName, f)
 }
 
 var commands = map[string]func(buffer.Type, []string){
 	"r": func(b buffer.Type, blobs []string) {
 		readIntoBuffer(b, blobs[1])
+	},
+	"w": func(b buffer.Type, blobs []string) {
+		b.WriteToFile(blobs[1:])
 	},
 }
 
