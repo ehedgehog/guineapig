@@ -41,9 +41,12 @@ func (b *SimpleBuffer) Expose() (line int, content []string) {
 }
 
 func (b *SimpleBuffer) WriteToFile(fileNameOption []string) {
-	fileName := b.fileName
+	fileName := ""
 	if len(fileNameOption) > 0 {
 		fileName = fileNameOption[0]
+	}
+	if len(fileName) == 0 {
+		fileName = b.fileName
 	}
 	f, err := os.Create(fileName)
 	if err == nil {
@@ -54,30 +57,19 @@ func (b *SimpleBuffer) WriteToFile(fileNameOption []string) {
 			f.Write([]byte(line))
 			f.Write([]byte{'\n'})
 		}
+	} else {
+		panic(err)
 	}
 }
 
 func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) {
-	/*
-		var x bytes.Buffer
-		x.ReadFrom(r)
-		all := x.Bytes()
-		for len(all) > 0 {
-			ch, size := utf8.DecodeRune(all)
-			if ch == '\n' {
-				b.Return()
-			} else {
-				b.Insert(ch)
-			}
-			all = all[size:]
-		}
-	*/
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		b.content = append(b.content, line)
 	}
 	b.where.Line = 0
+	b.fileName = fileName
 }
 
 func (b *SimpleBuffer) makeRoom() {
