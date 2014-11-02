@@ -10,21 +10,39 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Type interface {
+	// Insert inserts the rune at the current position and moves right.
 	Insert(ch rune)
+	// DeleteBack delete the previous rune if not at line start. Otherwise
+	// it does nothing.
 	DeleteBack()
+	// DeleteForward delete the current rune if there are any runes
+	// remaining on the current line. Otherwise it does nothing.
 	DeleteForward()
+	// BackOne moves left one rune if not at line start. Otherwise
+	// it does nothing.
 	BackOne()
+	// UpOne moves up one line if not at first line, preserving the column.
 	UpOne()
+	// DownOne moves down one line, preserving the column.
 	DownOne()
+	// ForwardOne moves right one rune.
 	ForwardOne()
+	// Return inserts a newline (and hence a new line) at the current position.
 	Return()
+	// Execute executes the current line as a command.
 	Execute()
+	// PutLines writes n lines starting at first to c.
 	PutLines(c screen.Canvas, first, n int)
+	// SetWhere sets the current position to be where.
 	SetWhere(where grid.LineCol)
+	// Where returns the current position
 	Where() grid.LineCol
-	Expose() (line int, content []string) // attempt to eliminate?
+	// attempt to eliminate?
+	Expose() (line int, content []string)
+	// ReadFromFile reads from r inserting the content at the current position.
 	ReadFromFile(fileName string, r io.Reader)
-	WriteToFile(fileName []string)
+	//
+	WriteToFile(fileNameOption []string)
 }
 
 // SimpleBuffer is a simplistic implementation of
