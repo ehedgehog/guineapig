@@ -236,7 +236,7 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.focusBuffer == &ep.mainBuffer {
-		where := ep.mainBuffer.Where()
+		where := ep.mainBuffer.Where().LineMinus(ep.verticalOffset)
 		ep.textBox.SetCursor(where)
 	} else {
 		where := ep.lineBuffer.Where()

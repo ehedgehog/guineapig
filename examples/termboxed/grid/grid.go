@@ -10,6 +10,10 @@ func (where LineCol) ColPlus(dCol int) LineCol {
 	return LineCol{Col: where.Col + dCol, Line: where.Line}
 }
 
+func (where LineCol) LineMinus(dRow int) LineCol {
+	return LineCol{Col: where.Col, Line: where.Line - dRow}
+}
+
 func (where LineCol) Plus(offset LineCol) LineCol {
 	return LineCol{Col: where.Col + offset.Col, Line: where.Line + offset.Line}
 }
