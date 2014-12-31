@@ -11,7 +11,9 @@ buffer tests
 
 placement of cursor following vertical scrolling
 horizontal scrolling 
-TABS       
+TABS         
+the colour 'yellow' is more of a mucky orange. need lots of colours.      
+movement to/from command line, persistence of same
 placement of cursor folloing horizontal movement
 search (plain; regexp)
 mouse distinguish left/right click and shift/ctrl/alt modifiers
@@ -23,7 +25,6 @@ line beginning/end movement
 token highlighting
 menus
 delete line(s)
-mark text ranges
 delete marked range(s)
 write marked range(s)
 warning markers following analysis
@@ -38,4 +39,9 @@ edit command language ([if|then|else], (while|do), this;that, (...)) ...
 DONE
 
 read from file into current buffer at cursor.
+
+mark text ranges
+	f3=mark low, f4=mark high, displayed in left gutter
+	f3 will pull up an earlier f4, f4 will push down an earlier f3
+
 

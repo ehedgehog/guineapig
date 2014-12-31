@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	// 	"log"
 	"os"
 	"strings"
 )
@@ -33,16 +34,18 @@ type EventHandler interface {
 }
 
 type EditorPanel struct {
-	topBar         screen.Canvas
-	bottomBar      screen.Canvas
-	leftBar        screen.Canvas
-	rightBar       screen.Canvas
-	textBox        screen.Canvas
-	mainBuffer     buffer.Type
-	lineBuffer     buffer.Type
-	focusBuffer    *buffer.Type
-	verticalOffset int
-	where          grid.LineCol
+	firstMarkedLine int
+	lastMarkedLine  int
+	topBar          screen.Canvas
+	bottomBar       screen.Canvas
+	leftBar         screen.Canvas
+	rightBar        screen.Canvas
+	textBox         screen.Canvas
+	mainBuffer      buffer.Type
+	lineBuffer      buffer.Type
+	focusBuffer     *buffer.Type
+	verticalOffset  int
+	where           grid.LineCol
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -101,22 +104,43 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 	b := *ep.focusBuffer
 	if e.Ch == 0 {
 		switch e.Key {
+
 		case 0:
 			// nothing
+
 		case termbox.KeyCtrlB:
 			if ep.focusBuffer == &ep.mainBuffer {
 				ep.focusBuffer = &ep.lineBuffer
 			} else {
 				ep.focusBuffer = &ep.mainBuffer
 			}
+
 		case termbox.KeySpace:
 			b.Insert(' ')
+
 		case termbox.KeyBackspace2:
 			b.DeleteBack()
+
 		case termbox.KeyDelete:
 			b.DeleteForward()
+
 		case termbox.KeyArrowLeft:
 			b.BackOne()
+
+		case termbox.KeyF3:
+			where := ep.mainBuffer.Where()
+			ep.firstMarkedLine = where.Line + 1
+			if ep.lastMarkedLine < ep.firstMarkedLine {
+				ep.lastMarkedLine = ep.firstMarkedLine
+			}
+
+		case termbox.KeyF4:
+			where := ep.mainBuffer.Where()
+			ep.lastMarkedLine = where.Line + 1
+			if ep.firstMarkedLine > ep.lastMarkedLine {
+				ep.firstMarkedLine = ep.lastMarkedLine
+			}
+
 		case termbox.KeyEnter:
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
@@ -129,12 +153,16 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				}
 				ep.focusBuffer = &ep.mainBuffer
 			}
+
 		case termbox.KeyArrowRight:
 			b.ForwardOne()
+
 		case termbox.KeyArrowUp:
 			b.UpOne()
+
 		case termbox.KeyArrowDown:
 			b.DownOne()
+
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 			for _, ch := range report {
@@ -230,8 +258,43 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
 	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, 1)
 	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
-	eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
+	// eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
+	eh.textBox = NewTextBox(eh, outer, 1, 1, w-2, h-2)
 	return nil
+}
+
+const tryTagSize = 5
+
+func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) screen.Canvas {
+	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
+	return &TextBox{tagSize: tryTagSize, ep: ep, SubCanvas: *sub.(*screen.SubCanvas)}
+}
+
+type TextBox struct {
+	tagSize int
+	ep      *EditorPanel
+	screen.SubCanvas
+}
+
+var markStyle = screen.StyleBackYellow
+
+func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
+	if where.Col == 0 {
+
+		// log.Println("range:", t.ep.firstMarkedLine, "to", t.ep.lastMarkedLine)
+
+		if t.ep.firstMarkedLine-1 <= where.Line && where.Line <= t.ep.lastMarkedLine-1 {
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, 0}, ' ', markStyle)
+		}
+		//	for i := 0; i < t.tagSize; i += 1 {
+		//		t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, '_', s)
+		//	}
+	}
+	t.SubCanvas.SetCell(where.ColPlus(t.tagSize), ch, s)
+}
+
+func (t *TextBox) SetCursor(where grid.LineCol) {
+	t.SubCanvas.SetCursor(where.ColPlus(t.tagSize))
 }
 
 func (ep *EditorPanel) SetCursor() error {
