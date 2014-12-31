@@ -29,9 +29,7 @@ type Type interface {
 	ForwardOne()
 	// Return inserts a newline (and hence a new line) at the current position.
 	Return()
-	// Execute executes the current line as a command.
-	Execute()
-	// PutLines writes n lines starting at first to c.
+	Execute() error
 	PutLines(c screen.Canvas, first, n int)
 	// SetWhere sets the current position to be where.
 	SetWhere(where grid.LineCol)
@@ -40,25 +38,24 @@ type Type interface {
 	// attempt to eliminate?
 	Expose() (line int, content []string)
 	// ReadFromFile reads from r inserting the content at the current position.
-	ReadFromFile(fileName string, r io.Reader)
-	//
-	WriteToFile(fileNameOption []string)
+	ReadFromFile(fileName string, r io.Reader) error
+	WriteToFile(fileName []string) error
 }
 
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content  []string           // existing lines of text
-	where    grid.LineCol       // current location in buffer (line, column)
-	execute  func(Type, string) // execute command on buffer at line
-	fileName string             // file name used for most recent read
+	content  []string                 // existing lines of text
+	where    grid.LineCol             // current location in buffer (line, column)
+	execute  func(Type, string) error // execute command on buffer at line
+	fileName string                   // file name used for most recent read
 }
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
 	return b.where.Line, b.content
 }
 
-func (b *SimpleBuffer) WriteToFile(fileNameOption []string) {
+func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
 	fileName := ""
 	if len(fileNameOption) > 0 {
 		fileName = fileNameOption[0]
@@ -76,11 +73,12 @@ func (b *SimpleBuffer) WriteToFile(fileNameOption []string) {
 			f.Write([]byte{'\n'})
 		}
 	} else {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
-func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) {
+func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) error {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -88,6 +86,7 @@ func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) {
 	}
 	b.where.Line = 0
 	b.fileName = fileName
+	return nil
 }
 
 func (b *SimpleBuffer) makeRoom() {
@@ -118,9 +117,9 @@ func (b *SimpleBuffer) Insert(ch rune) {
 	b.content[b.where.Line] = string(D)
 }
 
-func (b *SimpleBuffer) Execute() {
+func (b *SimpleBuffer) Execute() error {
 	b.makeRoom()
-	b.execute(b, b.content[b.where.Line])
+	return b.execute(b, b.content[b.where.Line])
 }
 
 func (b *SimpleBuffer) Return() {
@@ -196,7 +195,7 @@ func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
 	s.where = where
 }
 
-func New(execute func(Type, string)) Type {
+func New(execute func(Type, string) error) Type {
 	return &SimpleBuffer{
 		content: []string{},
 		execute: execute,

@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 )
 
-import "github.com/nsf/termbox-go"
+import termbox "github.com/nsf/termbox-go"
+
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
@@ -51,36 +53,37 @@ func (ep *EditorPanel) Geometry() Geometry {
 	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
-func readIntoBuffer(b buffer.Type, fileName string) {
+func readIntoBuffer(b buffer.Type, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer f.Close()
-	b.ReadFromFile(fileName, f)
+	return b.ReadFromFile(fileName, f)
 }
 
-var commands = map[string]func(buffer.Type, []string){
-	"r": func(b buffer.Type, blobs []string) {
-		readIntoBuffer(b, blobs[1])
+var commands = map[string]func(buffer.Type, []string) error{
+	"r": func(b buffer.Type, blobs []string) error {
+		return readIntoBuffer(b, blobs[1])
 	},
-	"w": func(b buffer.Type, blobs []string) {
-		b.WriteToFile(blobs[1:])
+	"w": func(b buffer.Type, blobs []string) error {
+		return b.WriteToFile(blobs[1:])
 	},
 }
 
 func NewEditorPanel() EventHandler {
-	mb := buffer.New(func(b buffer.Type, s string) {})
+	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
 	ep := &EditorPanel{
 		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
-		lineBuffer: buffer.New(func(b buffer.Type, s string) {
+		lineBuffer: buffer.New(func(b buffer.Type, s string) error {
 			line, content := b.Expose()
 			blobs := strings.Split(content[line], " ")
 			// c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
 			command := commands[blobs[0]]
 			if command == nil {
+				return errors.New("not a command: " + blobs[0])
 			} else {
-				command(mb, blobs)
+				return command(mb, blobs)
 			}
 			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}),
@@ -118,7 +121,13 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
 			} else {
-				b.Execute()
+				err := b.Execute()
+				if err == nil {
+					report(b, "OK")
+				} else {
+					report(b, err.Error())
+				}
+				ep.focusBuffer = &ep.mainBuffer
 			}
 		case termbox.KeyArrowRight:
 			b.ForwardOne()
@@ -136,6 +145,16 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		b.Insert(e.Ch)
 	}
 	return nil
+}
+
+func report(b buffer.Type, message string) {
+	b.Insert(' ')
+	b.Insert('(')
+	for _, rune := range message {
+		b.Insert(rune)
+	}
+	b.Insert(')')
+	b.Insert(' ')
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
