@@ -1,3 +1,4 @@
+
 TODO
 
 buffer tests
@@ -9,7 +10,8 @@ buffer tests
 	buffer execute tests
 
 placement of cursor following vertical scrolling
-horizontal scrolling
+horizontal scrolling 
+TABS       
 placement of cursor folloing horizontal movement
 search (plain; regexp)
 mouse distinguish left/right click and shift/ctrl/alt modifiers
