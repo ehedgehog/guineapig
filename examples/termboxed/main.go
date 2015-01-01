@@ -112,6 +112,9 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			ep.focusBuffer = &ep.lineBuffer
 			ep.lineBuffer.Return()
 
+		case termbox.KeyF2:
+			ep.lineBuffer.Execute()
+
 		case termbox.KeyCtrlB:
 			if ep.focusBuffer == &ep.mainBuffer {
 				ep.focusBuffer = &ep.lineBuffer

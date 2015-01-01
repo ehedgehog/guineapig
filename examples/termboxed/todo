@@ -9,12 +9,31 @@ buffer tests
 	buffer display tests
 	buffer execute tests
 
+remove open panel, fixing up shelf/stack
+
 horizontal scrolling 
+
 TABS         
+	tabs in the text should expand as necessary. Maybe
+	the easiest thing to do is expand them on entry
+	and compress on exit? That makes rather a lot of
+	assumptions.
+
 adjustments to marked range when newlines inserted/deleted.
+	make marks a property of the buffer, since it knows when
+	lines are removed/inserted, and in any case it will have
+	to track other lines (or within lines)
+
+display range bar even on empty lines (currently display
+	is triggered when writing to the first rune of the line,
+	but if there is no first rune, there's no display.)
+
 the colour 'yellow' is more of a mucky orange. need lots of colours.      
+
 movement to/from command line, persistence of same
+
 placement of cursor following horizontal movement
+
 search (plain; regexp)
 mouse distinguish left/right click and shift/ctrl/alt modifiers
 write to file
@@ -35,6 +54,7 @@ ls command
 trim command arguments
 distinguish word commands (eg "ls") and character commands (eg "/")
 edit command language ([if|then|else], (while|do), this;that, (...)) ...
+undo/redo
 
 DONE
 

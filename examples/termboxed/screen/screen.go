@@ -34,8 +34,6 @@ var DefaultStyle = &StyleStruct{termbox.ColorDefault, termbox.ColorDefault}
 
 var StyleBackCyan = &StyleStruct{termbox.ColorDefault, termbox.ColorCyan}
 
-var StyleBackYellow = &StyleStruct{termbox.ColorDefault, termbox.ColorYellow}
-
 func PutString(c Canvas, x, y int, content string, s Style) {
 	i := 0
 	size := c.Size()
