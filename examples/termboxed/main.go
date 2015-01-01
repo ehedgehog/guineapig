@@ -289,8 +289,8 @@ func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
 
 		// log.Println("range:", t.ep.firstMarkedLine, "to", t.ep.lastMarkedLine)
-
-		if t.ep.firstMarkedLine-1 <= where.Line && where.Line <= t.ep.lastMarkedLine-1 {
+		ep := t.ep
+		if ep.firstMarkedLine-1-ep.verticalOffset <= where.Line && where.Line <= ep.lastMarkedLine-1-ep.verticalOffset {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, 0}, ' ', markStyle)
 		}
 		//	for i := 0; i < t.tagSize; i += 1 {
