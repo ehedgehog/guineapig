@@ -34,16 +34,24 @@ var DefaultStyle = &StyleStruct{termbox.ColorDefault, termbox.ColorDefault}
 
 var StyleBackCyan = &StyleStruct{termbox.ColorDefault, termbox.ColorCyan}
 
+var StyleBackYellow = &StyleStruct{termbox.ColorDefault, termbox.ColorYellow}
+
 func PutString(c Canvas, x, y int, content string, s Style) {
 	i := 0
 	size := c.Size()
 	w := size.Width
 	limit := w - x
+	sprime := *s.(*StyleStruct)
 	for _, ch := range content {
 		if i > limit {
 			break
 		}
-		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, s)
+		// sprime.fg += 1
+		scurrent := s
+		if i&1 == 0 {
+			scurrent = &sprime
+		}
+		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, scurrent)
 		i += 1
 	}
 }
