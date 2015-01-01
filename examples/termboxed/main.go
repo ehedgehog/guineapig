@@ -306,8 +306,8 @@ func (ep *EditorPanel) SetCursor() error {
 		where := ep.mainBuffer.Where().LineMinus(ep.verticalOffset)
 		ep.textBox.SetCursor(where) // (where.ColPlus(delta))
 	} else {
-		where := ep.lineBuffer.Where().LineMinus(ep.verticalOffset)
-		ep.topBar.SetCursor(grid.LineCol{where.Line, where.Col}) // (where)
+		where := ep.lineBuffer.Where()                          // .LineMinus(ep.verticalOffset)
+		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta}) // (where)
 	}
 	return nil
 }
