@@ -2,7 +2,7 @@ package screen
 
 import (
 	"github.com/ehedgehog/guineapig/examples/termboxed/grid"
-	"github.com/nsf/termbox-go"
+	"github.com/limetext/termbox-go"
 )
 
 ////////////////////////////////////////////////////////////////
@@ -28,6 +28,10 @@ func (ss *StyleStruct) Foreground() termbox.Attribute {
 
 func (ss *StyleStruct) Background() termbox.Attribute {
 	return ss.bg
+}
+
+func MakeStyle(fg, bg termbox.Attribute) *StyleStruct {
+	return &StyleStruct{fg, bg}
 }
 
 var DefaultStyle = &StyleStruct{termbox.ColorDefault, termbox.ColorDefault}

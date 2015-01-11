@@ -5,10 +5,11 @@ import (
 	"fmt"
 	// 	"log"
 	"os"
+	//	"strconv"
 	"strings"
 )
 
-import termbox "github.com/nsf/termbox-go"
+import termbox "github.com/limetext/termbox-go"
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
@@ -270,7 +271,7 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	return nil
 }
 
-const tryTagSize = 5
+const tryTagSize = 6
 
 func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) screen.Canvas {
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
@@ -283,7 +284,7 @@ type TextBox struct {
 	screen.SubCanvas
 }
 
-var markStyle = screen.StyleBackYellow
+var markStyle = screen.MakeStyle(termbox.ColorDefault, 12)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
@@ -291,7 +292,11 @@ func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 		// log.Println("range:", t.ep.firstMarkedLine, "to", t.ep.lastMarkedLine)
 		ep := t.ep
 		if ep.firstMarkedLine-1-ep.verticalOffset <= where.Line && where.Line <= ep.lastMarkedLine-1-ep.verticalOffset {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, 0}, ' ', markStyle)
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
+		}
+		s := fmt.Sprintf("%4v", where.Line+ep.verticalOffset)
+		for i, ch := range s {
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
 		}
 		//	for i := 0; i < t.tagSize; i += 1 {
 		//		t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, '_', s)
@@ -581,6 +586,19 @@ func (s *SideBySide) New() EventHandler {
 	panic("SideBySide.New")
 }
 
+func makeColours() []termbox.RGB {
+	result := termbox.Palette256 // make([]termbox.RGB, 256)
+	result[termbox.ColorBlack] = termbox.RGB{0, 0, 0}
+	result[termbox.ColorRed] = termbox.RGB{255, 0, 0}
+	result[termbox.ColorGreen] = termbox.RGB{0, 255, 0}
+	result[termbox.ColorYellow] = termbox.RGB{255, 255, 0}
+	result[termbox.ColorBlue] = termbox.RGB{0, 0, 255}
+	result[termbox.ColorMagenta] = termbox.RGB{255, 0, 255}
+	result[termbox.ColorCyan] = termbox.RGB{0, 255, 255}
+	result[termbox.ColorWhite] = termbox.RGB{255, 255, 255}
+	return result
+}
+
 func main() {
 	err := termbox.Init()
 	if err != nil {
@@ -588,6 +606,8 @@ func main() {
 	}
 	defer termbox.Close()
 
+	termbox.SetColorMode(termbox.ColorMode256)
+	termbox.SetColorPalette(makeColours())
 	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
 
 	page := screen.NewTermboxCanvas()
@@ -596,10 +616,7 @@ func main() {
 	// edB := NewStack(NewEditorPanel, NewEditorPanel())
 	//	eh := NewSideBySide(edA, edB)
 
-	eh := NewShelf(func() EventHandler {
-		return NewStack(NewEditorPanel, NewEditorPanel())
-	},
-		edA)
+	eh := NewShelf(func() EventHandler { return NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
 
 	eh.ResizeTo(page)
 

@@ -1,6 +1,6 @@
 package panel
 
-import "github.com/nsf/termbox-go"
+import "github.com/limetext/termbox-go"
 
 type Pen interface {
 	FG() termbox.Attribute
