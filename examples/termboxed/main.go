@@ -149,6 +149,30 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				ep.firstMarkedLine = ep.lastMarkedLine
 			}
 
+		case termbox.KeyPgup:
+			where := ep.mainBuffer.Where()
+			vo := ep.verticalOffset
+			if where.Line-vo == 0 {
+				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
+				ep.mainBuffer.SetWhere(grid.LineCol{top, where.Col})
+			} else {
+				ep.mainBuffer.SetWhere(grid.LineCol{vo, where.Col})
+			}
+
+		case termbox.KeyPgdn:
+			where := ep.mainBuffer.Where()
+			vo := ep.verticalOffset
+			height := ep.textBox.Size().Height
+			// lineCount, _ := ep.mainBuffer.Expose()
+			if where.Line-vo == height-1 {
+				// forward one page
+				bot := where.Line + height
+				ep.mainBuffer.SetWhere(grid.LineCol{bot, where.Col})
+			} else {
+				// bottom of this page
+				ep.mainBuffer.SetWhere(grid.LineCol{vo + height - 1, where.Col})
+			}
+
 		case termbox.KeyEnter:
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
