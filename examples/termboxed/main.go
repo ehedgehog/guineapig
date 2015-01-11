@@ -173,6 +173,17 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				ep.mainBuffer.SetWhere(grid.LineCol{vo + height - 1, where.Col})
 			}
 
+		case termbox.KeyEnd:
+			where := b.Where()
+			if where.Col == 0 {
+				lineNumber, contents := b.Expose()
+				line := contents[lineNumber]
+				where.Col = len(line)
+			} else {
+				where.Col = 0
+			}
+			b.SetWhere(where)
+
 		case termbox.KeyEnter:
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
