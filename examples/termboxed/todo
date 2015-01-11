@@ -65,3 +65,5 @@ mark text ranges
 	f3=mark low, f4=mark high, displayed in left gutter
 	f3 will pull up an earlier f4, f4 will push down an earlier f3
 
+line number displayed in left gutter as well as range mark.
+

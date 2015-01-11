@@ -55,8 +55,16 @@ func PutString(c Canvas, x, y int, content string, s Style) {
 		if i&1 == 0 {
 			scurrent = &sprime
 		}
-		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, scurrent)
-		i += 1
+		if ch == '\t' {
+			tabSpaces := 4 - (i+3)%4
+			for j := 0; j < tabSpaces; j += 1 {
+				c.SetCell(grid.LineCol{Col: x + i, Line: y}, '_', scurrent)
+				i += 1
+			}
+		} else {
+			c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, scurrent)
+			i += 1
+		}
 	}
 }
 
