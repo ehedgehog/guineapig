@@ -39,8 +39,6 @@ mouse distinguish left/right click and shift/ctrl/alt modifiers
 write to file
 read file / new buffer from file
 display messages somewhere
-page up/down movement
-line beginning/end movement
 token highlighting
 menus
 delete line(s)
@@ -64,4 +62,16 @@ read from file into current buffer at cursor.
 mark text ranges
 	f3=mark low, f4=mark high, displayed in left gutter
 	f3 will pull up an earlier f4, f4 will push down an earlier f3
+
+page up/down movement
+	page up moves to the top of this page if not already there.
+	otherwise it skips back a full page unless there's less than
+	a full page left, in which case it skips to the top.
+
+	page down moves to the bottom of this page if not already there.
+	otherwise it skips forward a full page.
+
+line beginning/end movement
+	end moves to the beginning of the line unless it's already
+	there, in which case it moves to the end.
 
