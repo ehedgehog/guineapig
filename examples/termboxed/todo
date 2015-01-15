@@ -50,6 +50,7 @@ read config file
 do less (re-)copying and page building
 ls command
 trim command arguments
+when main starts consider cli arguments eg for files to edit
 distinguish word commands (eg "ls") and character commands (eg "/")
 edit command language ([if|then|else], (while|do), this;that, (...)) ...
 undo/redo
