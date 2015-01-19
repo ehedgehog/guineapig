@@ -41,7 +41,8 @@ read file / new buffer from file
 display messages somewhere
 token highlighting
 menus
-delete line(s)
+delete multiple line(s)
+delete current line should adjust the marked range
 delete marked range(s)
 write marked range(s)
 warning markers following analysis
@@ -75,4 +76,7 @@ page up/down movement
 line beginning/end movement
 	end moves to the beginning of the line unless it's already
 	there, in which case it moves to the end.
+
+delete current line
+	ENTER d RETURN deletes the current line
 

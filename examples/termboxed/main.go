@@ -73,6 +73,11 @@ var commands = map[string]func(buffer.Type, []string) error{
 	"w": func(b buffer.Type, blobs []string) error {
 		return b.WriteToFile(blobs[1:])
 	},
+	"d": func(b buffer.Type, blobs []string) error {
+		lineNumber, _ := b.Expose()
+		b.DeleteLine(lineNumber)
+		return nil
+	},
 }
 
 func NewEditorPanel() EventHandler {
