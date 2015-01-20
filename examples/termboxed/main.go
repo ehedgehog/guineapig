@@ -319,7 +319,7 @@ type TextBox struct {
 	screen.SubCanvas
 }
 
-var markStyle = screen.MakeStyle(termbox.ColorDefault, 12)
+var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
