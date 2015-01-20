@@ -66,23 +66,33 @@ func readIntoBuffer(b buffer.Type, fileName string) error {
 	return b.ReadFromFile(fileName, f)
 }
 
-var commands = map[string]func(buffer.Type, []string) error{
-	"r": func(b buffer.Type, blobs []string) error {
+var commands = map[string]func(*EditorPanel, []string) error{
+	"r": func(ep *EditorPanel, blobs []string) error {
+		b := ep.mainBuffer
 		return readIntoBuffer(b, blobs[1])
 	},
-	"w": func(b buffer.Type, blobs []string) error {
+	"w": func(ep *EditorPanel, blobs []string) error {
+		b := ep.mainBuffer
 		return b.WriteToFile(blobs[1:])
 	},
-	"d": func(b buffer.Type, blobs []string) error {
+	"d": func(ep *EditorPanel, blobs []string) error {
+		b := ep.mainBuffer
 		lineNumber, _ := b.Expose()
 		b.DeleteLine(lineNumber)
+		return nil
+	},
+	"dr": func(ep *EditorPanel, blobs []string) error {
+		b := ep.mainBuffer
+		b.DeleteLines(ep.firstMarkedLine, ep.lastMarkedLine)
+		ep.firstMarkedLine, ep.lastMarkedLine = 0, 0
 		return nil
 	},
 }
 
 func NewEditorPanel() EventHandler {
 	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
-	ep := &EditorPanel{
+	var ep *EditorPanel
+	ep = &EditorPanel{
 		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
 		lineBuffer: buffer.New(func(b buffer.Type, s string) error {
 			line, content := b.Expose()
@@ -92,7 +102,7 @@ func NewEditorPanel() EventHandler {
 			if command == nil {
 				return errors.New("not a command: " + blobs[0])
 			} else {
-				return command(mb, blobs)
+				return command(ep, blobs)
 			}
 			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}),
