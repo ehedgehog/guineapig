@@ -12,6 +12,8 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 type Type interface {
 	// Insert inserts the rune at the current position and moves right.
 	Insert(ch rune)
+	// DeleteLine(n) deletes line n from the buffer
+	DeleteLine(line int)
 	// DeleteBack delete the previous rune if not at line start. Otherwise
 	// it does nothing.
 	DeleteBack()
@@ -53,6 +55,16 @@ type SimpleBuffer struct {
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
 	return b.where.Line, b.content
+}
+
+func (b *SimpleBuffer) DeleteLine(line int) {
+	if line == 0 {
+		b.content = b.content[1:]
+	} else if line < len(b.content) {
+		b.content = append(b.content[0:line], b.content[line+1:]...)
+	} else {
+		// nothing to do -- deleting virtual line
+	}
 }
 
 func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
