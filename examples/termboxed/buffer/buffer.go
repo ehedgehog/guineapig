@@ -12,6 +12,7 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 type Type interface {
 	// Insert inserts the rune at the current position and moves right.
 	Insert(ch rune)
+
 	// DeleteLine(n) deletes line n from the buffer
 	DeleteLine(line int)
 
@@ -20,30 +21,43 @@ type Type interface {
 	// DeleteBack delete the previous rune if not at line start. Otherwise
 	// it does nothing.
 	DeleteBack()
+
 	// DeleteForward delete the current rune if there are any runes
 	// remaining on the current line. Otherwise it does nothing.
 	DeleteForward()
+
 	// BackOne moves left one rune if not at line start. Otherwise
 	// it does nothing.
 	BackOne()
+
 	// UpOne moves up one line if not at first line, preserving the column.
 	UpOne()
+
 	// DownOne moves down one line, preserving the column.
 	DownOne()
+
 	// ForwardOne moves right one rune.
 	ForwardOne()
+
 	// Return inserts a newline (and hence a new line) at the current position.
 	Return()
+
 	Execute() error
+
 	PutLines(c screen.Canvas, first, n int)
+
 	// SetWhere sets the current position to be where.
 	SetWhere(where grid.LineCol)
+
 	// Where returns the current position
 	Where() grid.LineCol
+
 	// attempt to eliminate?
 	Expose() (line int, content []string)
+
 	// ReadFromFile reads from r inserting the content at the current position.
 	ReadFromFile(fileName string, r io.Reader) error
+
 	WriteToFile(fileName []string) error
 }
 
