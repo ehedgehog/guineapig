@@ -14,6 +14,9 @@ type Type interface {
 	Insert(ch rune)
 	// DeleteLine(n) deletes line n from the buffer
 	DeleteLine(line int)
+
+	DeleteLines(lowLine, highLine int)
+
 	// DeleteBack delete the previous rune if not at line start. Otherwise
 	// it does nothing.
 	DeleteBack()
@@ -55,6 +58,12 @@ type SimpleBuffer struct {
 
 func (b *SimpleBuffer) Expose() (line int, content []string) {
 	return b.where.Line, b.content
+}
+
+func (b *SimpleBuffer) DeleteLines(lowLine, highLine int) {
+	if 0 <= lowLine && lowLine <= highLine && highLine <= len(b.content) {
+		b.content = append(b.content[0:lowLine-1], b.content[highLine:]...)
+	}
 }
 
 func (b *SimpleBuffer) DeleteLine(line int) {

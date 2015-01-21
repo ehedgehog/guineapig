@@ -41,10 +41,13 @@ read file / new buffer from file
 display messages somewhere
 token highlighting
 menus
+
 delete multiple line(s)
 delete current line should adjust the marked range
 delete marked range(s)
 write marked range(s)
+move marked range
+
 warning markers following analysis
 run code over buffer
 read config file
