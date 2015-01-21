@@ -42,9 +42,7 @@ display messages somewhere
 token highlighting
 menus
 
-delete multiple line(s)
 delete current line should adjust the marked range
-delete marked range(s)
 write marked range(s)
 move marked range
 
@@ -82,4 +80,11 @@ line beginning/end movement
 
 delete current line
 	ENTER d RETURN deletes the current line
+
+delete marked range
+	ENTER dr RETURN deletes the current marked range
+	(and forgets the range)
+
+delete multiple line(s)
+	use delete-marked-range.
 

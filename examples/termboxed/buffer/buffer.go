@@ -62,7 +62,14 @@ func (b *SimpleBuffer) Expose() (line int, content []string) {
 
 func (b *SimpleBuffer) DeleteLines(lowLine, highLine int) {
 	if 0 <= lowLine && lowLine <= highLine && highLine <= len(b.content) {
-		b.content = append(b.content[0:lowLine-1], b.content[highLine:]...)
+		b.content = append(b.content[0:lowLine], b.content[highLine+1:]...)
+		if b.where.Line >= lowLine {
+			if b.where.Line <= highLine {
+				b.where.Line = lowLine
+			} else {
+				b.where.Line = b.where.Line - (highLine - lowLine + 1)
+			}
+		}
 	}
 }
 

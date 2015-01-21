@@ -82,10 +82,14 @@ var commands = map[string]func(*EditorPanel, []string) error{
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
-		b := ep.mainBuffer
-		b.DeleteLines(ep.firstMarkedLine, ep.lastMarkedLine)
-		ep.firstMarkedLine, ep.lastMarkedLine = 0, 0
-		return nil
+		if ep.firstMarkedLine > 0 {
+			b := ep.mainBuffer
+			b.DeleteLines(ep.firstMarkedLine-1, ep.lastMarkedLine-1)
+			ep.firstMarkedLine, ep.lastMarkedLine = 0, 0
+			return nil
+		} else {
+			return errors.New("no marked range")
+		}
 	},
 }
 
