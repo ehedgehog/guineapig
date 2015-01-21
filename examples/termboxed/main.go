@@ -215,6 +215,17 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		case termbox.KeyEnter:
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
+				if ep.firstMarkedLine > 0 {
+					lineNumber, _ := b.Expose()
+					first, last := ep.firstMarkedLine+1, ep.lastMarkedLine+1
+					if lineNumber < last {
+						ep.lastMarkedLine += 1
+					}
+					if lineNumber < first-1 {
+						ep.firstMarkedLine += 1
+					}
+					report(ep.lineBuffer, "zingo")
+				}
 
 			} else {
 				err := b.Execute()

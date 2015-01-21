@@ -42,8 +42,6 @@ display messages somewhere
 token highlighting
 menus
 
-Adding line breaks should widen the marked range unless above
-its end.
 
 write marked range(s)
 move marked range
@@ -95,4 +93,7 @@ delete current line should adjust the marked range
 	otherwise reduce each marked line if deleted line
 	was same or lower than it.
 
+Adding line breaks should widen the marked range unless above
+its end.
+	Done for RETURN (but not for newlines created by Read).
 
