@@ -79,6 +79,15 @@ var commands = map[string]func(*EditorPanel, []string) error{
 		b := ep.mainBuffer
 		lineNumber, _ := b.Expose()
 		b.DeleteLine(lineNumber)
+		if ep.firstMarkedLine > 0 {
+			first, last := ep.firstMarkedLine-1, ep.lastMarkedLine-1
+			if lineNumber <= last {
+				ep.lastMarkedLine -= 1
+				if lineNumber < first {
+					ep.firstMarkedLine -= 1
+				}
+			}
+		}
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
@@ -206,6 +215,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		case termbox.KeyEnter:
 			if ep.focusBuffer == &ep.mainBuffer {
 				b.Return()
+
 			} else {
 				err := b.Execute()
 				if err == nil {

@@ -42,7 +42,9 @@ display messages somewhere
 token highlighting
 menus
 
-delete current line should adjust the marked range
+Adding line breaks should widen the marked range unless above
+its end.
+
 write marked range(s)
 move marked range
 
@@ -87,4 +89,10 @@ delete marked range
 
 delete multiple line(s)
 	use delete-marked-range.
+
+delete current line should adjust the marked range
+	Nothing needed if after last mark or if no mark;
+	otherwise reduce each marked line if deleted line
+	was same or lower than it.
+
 
