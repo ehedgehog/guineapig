@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"bufio"
+	"errors"
 	"io"
 	"os"
 )
@@ -11,52 +12,53 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Type interface {
 	// Insert inserts the rune at the current position and moves right.
-	Insert(ch rune)
+	Insert(where grid.LineCol, ch rune) grid.LineCol
 
 	// DeleteLine(n) deletes line n from the buffer
-	DeleteLine(line int)
+	DeleteLine(where grid.LineCol) grid.LineCol
 
-	DeleteLines(lowLine, highLine int)
+	DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol
 
 	// DeleteBack delete the previous rune if not at line start. Otherwise
 	// it does nothing.
-	DeleteBack()
+	DeleteBack(grid.LineCol) grid.LineCol
 
 	// DeleteForward delete the current rune if there are any runes
 	// remaining on the current line. Otherwise it does nothing.
-	DeleteForward()
+	DeleteForward(grid.LineCol) grid.LineCol
 
 	// BackOne moves left one rune if not at line start. Otherwise
 	// it does nothing.
-	BackOne()
+	BackOne(grid.LineCol) grid.LineCol
 
-	// UpOne moves up one line if not at first line, preserving the column.
-	UpOne()
+	// UpOne returns a LineCol one line up from where, or where
+	// unmodified if it i at the first line.
+	UpOne(where grid.LineCol) grid.LineCol
 
 	// DownOne moves down one line, preserving the column.
-	DownOne()
+	DownOne(where grid.LineCol) grid.LineCol
 
 	// ForwardOne moves right one rune.
-	ForwardOne()
+	ForwardOne(where grid.LineCol) grid.LineCol
 
 	// Return inserts a newline (and hence a new line) at the current position.
-	Return()
+	Return(grid.LineCol) grid.LineCol
 
-	Execute() error
+	Execute(grid.LineCol) (grid.LineCol, error)
 
 	PutLines(c screen.Canvas, first, n int)
 
 	// SetWhere sets the current position to be where.
-	SetWhere(where grid.LineCol)
+	// SetWhere(where grid.LineCol)
 
 	// Where returns the current position
-	Where() grid.LineCol
+	// Where() grid.LineCol
 
 	// attempt to eliminate?
-	Expose() (line int, content []string)
+	Expose() []string
 
 	// ReadFromFile reads from r inserting the content at the current position.
-	ReadFromFile(fileName string, r io.Reader) error
+	ReadFromFile(where grid.LineCol, fileName string, r io.Reader) (grid.LineCol, error)
 
 	WriteToFile(fileName []string) error
 }
@@ -64,30 +66,32 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content  []string                 // existing lines of text
-	where    grid.LineCol             // current location in buffer (line, column)
+	content []string // existing lines of text
+	//	where    grid.LineCol             // current location in buffer (line, column)
 	execute  func(Type, string) error // execute command on buffer at line
 	fileName string                   // file name used for most recent read
 }
 
-func (b *SimpleBuffer) Expose() (line int, content []string) {
-	return b.where.Line, b.content
+func (b *SimpleBuffer) Expose() (content []string) {
+	return b.content
 }
 
-func (b *SimpleBuffer) DeleteLines(lowLine, highLine int) {
+func (b *SimpleBuffer) DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol {
 	if 0 <= lowLine && lowLine <= highLine && highLine <= len(b.content) {
 		b.content = append(b.content[0:lowLine], b.content[highLine+1:]...)
-		if b.where.Line >= lowLine {
-			if b.where.Line <= highLine {
-				b.where.Line = lowLine
+		if where.Line >= lowLine {
+			if where.Line <= highLine {
+				where.Line = lowLine
 			} else {
-				b.where.Line = b.where.Line - (highLine - lowLine + 1)
+				where.Line = where.Line - (highLine - lowLine + 1)
 			}
 		}
 	}
+	return where
 }
 
-func (b *SimpleBuffer) DeleteLine(line int) {
+func (b *SimpleBuffer) DeleteLine(where grid.LineCol) grid.LineCol {
+	line := where.Line
 	if line == 0 {
 		b.content = b.content[1:]
 	} else if line < len(b.content) {
@@ -95,6 +99,7 @@ func (b *SimpleBuffer) DeleteLine(line int) {
 	} else {
 		// nothing to do -- deleting virtual line
 	}
+	return where
 }
 
 func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
@@ -120,19 +125,19 @@ func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
 	return nil
 }
 
-func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) error {
+func (b *SimpleBuffer) ReadFromFile(where grid.LineCol, fileName string, r io.Reader) (grid.LineCol, error) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		b.content = append(b.content, line)
 	}
-	b.where.Line = 0
+	where.Line = 0
 	b.fileName = fileName
-	return nil
+	return where, nil
 }
 
-func (b *SimpleBuffer) makeRoom() {
-	line, col := b.where.Line, b.where.Col
+func (b *SimpleBuffer) makeRoom(where grid.LineCol) {
+	line, col := where.Line, where.Col
 	if line >= len(b.content) {
 		content := make([]string, line+1)
 		copy(content, b.content)
@@ -143,81 +148,90 @@ func (b *SimpleBuffer) makeRoom() {
 	}
 }
 
-func (b *SimpleBuffer) Insert(ch rune) {
+func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) grid.LineCol {
 
-	b.makeRoom()
+	b.makeRoom(where)
 
-	loc := b.where.Col
-	runes := []rune(b.content[b.where.Line])
+	loc := where.Col
+	runes := []rune(b.content[where.Line])
 
 	A := []rune{}
 	B := append(A, runes[0:loc]...)
 	C := append(B, ch)
 	D := append(C, runes[loc:]...)
 
-	b.where.Col += 1
-	b.content[b.where.Line] = string(D)
+	where.Col += 1
+	b.content[where.Line] = string(D)
+
+	return where
 }
 
-func (b *SimpleBuffer) Execute() error {
-	b.makeRoom()
-	return b.execute(b, b.content[b.where.Line])
+func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
+	b.makeRoom(where)
+	// return b.execute(b, b.content[where.Line])
+	return where, errors.New("execute not implemented yet.")
 }
 
-func (b *SimpleBuffer) Return() {
+func (b *SimpleBuffer) Return(where grid.LineCol) grid.LineCol {
 
-	b.makeRoom()
+	b.makeRoom(where)
 
 	lines := append(b.content, "")
 
-	line, col := b.where.Line, b.where.Col
+	line, col := where.Line, where.Col
 	right := lines[line][col:]
 	left := lines[line][0:col]
 
 	copy(lines[line+1:], lines[line:])
 	lines[line] = left
 	lines[line+1] = right
-	b.DownOne() // b.line += 1
-	b.where.Col = 0
+	where = b.DownOne(where)
+	where.Col = 0
 	b.content = lines
+	return where
 }
 
-func (b *SimpleBuffer) UpOne() {
-	if b.where.Line > 0 {
-		b.where.Line -= 1
+func (b *SimpleBuffer) UpOne(where grid.LineCol) grid.LineCol {
+	if where.Line > 0 {
+		where.Line -= 1
 	}
+	return where
 }
 
-func (b *SimpleBuffer) DownOne() {
-	b.where.Line += 1
+func (b *SimpleBuffer) DownOne(where grid.LineCol) grid.LineCol {
+	where.Line += 1
+	return where
 }
 
-func (b *SimpleBuffer) BackOne() {
-	if b.where.Col > 0 {
-		b.where.Col -= 1
+func (b *SimpleBuffer) BackOne(where grid.LineCol) grid.LineCol {
+	if where.Col > 0 {
+		where.Col -= 1
 	}
+	return where
 }
 
-func (b *SimpleBuffer) ForwardOne() {
-	b.where.Col += 1
+func (b *SimpleBuffer) ForwardOne(where grid.LineCol) grid.LineCol {
+	where.Col += 1
+	return where
 }
 
-func (b *SimpleBuffer) DeleteBack() {
-	b.makeRoom()
-	line, col := b.where.Line, b.where.Col
+func (b *SimpleBuffer) DeleteBack(where grid.LineCol) grid.LineCol {
+	b.makeRoom(where)
+	line, col := where.Line, where.Col
 	if col > 0 {
 		content := b.content[line]
 		before := content[0 : col-1]
 		after := content[col:]
 		newContent := before + after
 		b.content[line] = newContent
-		b.BackOne()
+		return b.BackOne(where)
 	}
+	return where
 }
 
-func (b *SimpleBuffer) DeleteForward() {
-	b.ForwardOne()
-	b.DeleteBack()
+func (b *SimpleBuffer) DeleteForward(where grid.LineCol) grid.LineCol {
+	where = b.ForwardOne(where)
+	return b.DeleteBack(where)
 }
 
 func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
@@ -229,13 +243,13 @@ func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	}
 }
 
-func (s *SimpleBuffer) Where() grid.LineCol {
-	return s.where
-}
+// func (s *SimpleBuffer) Where() grid.LineCol {
+// 	return s.where
+//}
 
-func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
-	s.where = where
-}
+// func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
+// 	s.where = where
+// }
 
 func New(execute func(Type, string) error) Type {
 	return &SimpleBuffer{
