@@ -46,8 +46,7 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content []string // existing lines of text
-	//	where    grid.LineCol             // current location in buffer (line, column)
+	content  []string                 // existing lines of text
 	execute  func(Type, string) error // execute command on buffer at line
 	fileName string                   // file name used for most recent read
 }

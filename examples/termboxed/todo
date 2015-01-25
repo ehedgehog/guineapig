@@ -24,6 +24,11 @@ adjustments to marked range when newlines inserted/deleted.
 	lines are removed/inserted, and in any case it will have
 	to track other lines (or within lines)
 
+make EditorPanel's have a Focus object which combines
+	a pointer to a LineCol cursor and a pointer to a Buffer.
+	Use this to replace focusBuffer and include the cursor
+	in the focus.
+
 display range bar even on empty lines (currently display
 	is triggered when writing to the first rune of the line,
 	but if there is no first rune, there's no display.)

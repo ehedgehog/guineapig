@@ -34,20 +34,29 @@ type EventHandler interface {
 	New() EventHandler
 }
 
+type Focus struct {
+	where  *grid.LineCol
+	buffer *buffer.Type
+}
+
 type EditorPanel struct {
 	firstMarkedLine int
 	lastMarkedLine  int
-	topBar          screen.Canvas
-	bottomBar       screen.Canvas
-	leftBar         screen.Canvas
-	rightBar        screen.Canvas
-	textBox         screen.Canvas
-	mainBuffer      buffer.Type
-	lineBuffer      buffer.Type
-	focusBuffer     *buffer.Type
-	verticalOffset  int
-	where           grid.LineCol
-	otherWhere      grid.LineCol
+
+	topBar    screen.Canvas
+	bottomBar screen.Canvas
+	leftBar   screen.Canvas
+	rightBar  screen.Canvas
+	textBox   screen.Canvas
+
+	mainBuffer buffer.Type
+	lineBuffer buffer.Type
+
+	focus          Focus
+	focusBuffer    *buffer.Type
+	verticalOffset int
+	where          grid.LineCol
+	otherWhere     grid.LineCol
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -143,10 +152,10 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 		case termbox.KeyF1:
 			ep.focusBuffer = &ep.lineBuffer
-			ep.where = ep.lineBuffer.Return(ep.where)
+			ep.otherWhere = ep.lineBuffer.Return(ep.otherWhere)
 
 		case termbox.KeyF2:
-			ep.where, _ = ep.lineBuffer.Execute(ep.where)
+			ep.otherWhere, _ = ep.lineBuffer.Execute(ep.otherWhere)
 
 		case termbox.KeyCtrlB:
 			if ep.focusBuffer == &ep.mainBuffer {
