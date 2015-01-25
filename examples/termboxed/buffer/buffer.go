@@ -27,20 +27,6 @@ type Type interface {
 	// remaining on the current line. Otherwise it does nothing.
 	DeleteForward(grid.LineCol) grid.LineCol
 
-	// BackOne moves left one rune if not at line start. Otherwise
-	// it does nothing.
-	BackOne(grid.LineCol) grid.LineCol
-
-	// UpOne returns a LineCol one line up from where, or where
-	// unmodified if it i at the first line.
-	UpOne(where grid.LineCol) grid.LineCol
-
-	// DownOne moves down one line, preserving the column.
-	DownOne(where grid.LineCol) grid.LineCol
-
-	// ForwardOne moves right one rune.
-	ForwardOne(where grid.LineCol) grid.LineCol
-
 	// Return inserts a newline (and hence a new line) at the current position.
 	Return(grid.LineCol) grid.LineCol
 
@@ -185,33 +171,9 @@ func (b *SimpleBuffer) Return(where grid.LineCol) grid.LineCol {
 	copy(lines[line+1:], lines[line:])
 	lines[line] = left
 	lines[line+1] = right
-	where = b.DownOne(where)
+	where.DownOne()
 	where.Col = 0
 	b.content = lines
-	return where
-}
-
-func (b *SimpleBuffer) UpOne(where grid.LineCol) grid.LineCol {
-	if where.Line > 0 {
-		where.Line -= 1
-	}
-	return where
-}
-
-func (b *SimpleBuffer) DownOne(where grid.LineCol) grid.LineCol {
-	where.Line += 1
-	return where
-}
-
-func (b *SimpleBuffer) BackOne(where grid.LineCol) grid.LineCol {
-	if where.Col > 0 {
-		where.Col -= 1
-	}
-	return where
-}
-
-func (b *SimpleBuffer) ForwardOne(where grid.LineCol) grid.LineCol {
-	where.Col += 1
 	return where
 }
 
@@ -224,13 +186,13 @@ func (b *SimpleBuffer) DeleteBack(where grid.LineCol) grid.LineCol {
 		after := content[col:]
 		newContent := before + after
 		b.content[line] = newContent
-		return b.BackOne(where)
+		where.LeftOne()
 	}
 	return where
 }
 
 func (b *SimpleBuffer) DeleteForward(where grid.LineCol) grid.LineCol {
-	where = b.ForwardOne(where)
+	where.RightOne()
 	return b.DeleteBack(where)
 }
 

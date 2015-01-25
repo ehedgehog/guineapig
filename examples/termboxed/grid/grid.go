@@ -6,6 +6,26 @@ type LineCol struct {
 	Col  int
 }
 
+func (where *LineCol) UpOne() {
+	if where.Line > 0 {
+		where.Line -= 1
+	}
+}
+
+func (where *LineCol) DownOne() {
+	where.Line += 1
+}
+
+func (where *LineCol) LeftOne() {
+	if where.Col > 0 {
+		where.Col -= 1
+	}
+}
+
+func (where *LineCol) RightOne() {
+	where.Col += 1
+}
+
 func (where LineCol) ColPlus(dCol int) LineCol {
 	return LineCol{Col: where.Col + dCol, Line: where.Line}
 }

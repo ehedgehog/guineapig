@@ -164,9 +164,6 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		case termbox.KeyDelete:
 			ep.where = b.DeleteForward(ep.where)
 
-		case termbox.KeyArrowLeft:
-			ep.where = b.BackOne(ep.where)
-
 		case termbox.KeyF3:
 			where := ep.where
 			ep.firstMarkedLine = where.Line + 1
@@ -242,13 +239,16 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			}
 
 		case termbox.KeyArrowRight:
-			ep.where = b.ForwardOne(ep.where)
+			ep.where.RightOne()
 
 		case termbox.KeyArrowUp:
-			ep.where = b.UpOne(ep.where)
+			ep.where.UpOne()
 
 		case termbox.KeyArrowDown:
-			ep.where = b.DownOne(ep.where)
+			ep.where.DownOne()
+
+		case termbox.KeyArrowLeft:
+			ep.where.LeftOne()
 
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
