@@ -156,7 +156,8 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			}
 
 		case termbox.KeySpace:
-			ep.where = b.Insert(ep.where, ' ')
+			b.Insert(ep.where, ' ')
+			ep.where.RightOne()
 
 		case termbox.KeyBackspace2:
 			ep.where = b.DeleteBack(ep.where)
@@ -192,7 +193,6 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			where := ep.where
 			vo := ep.verticalOffset
 			height := ep.textBox.Size().Height
-			// lineCount, _ := ep.mainBuffer.Expose()
 			if where.Line-vo == height-1 {
 				// forward one page
 				bot := where.Line + height
@@ -253,23 +253,30 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 			for _, ch := range report {
-				ep.where = b.Insert(ep.where, rune(ch))
+				b.Insert(ep.where, rune(ch))
+				ep.where.RightOne()
 			}
 		}
 	} else {
-		ep.where = b.Insert(ep.where, e.Ch)
+		b.Insert(ep.where, e.Ch)
+		ep.where.RightOne()
 	}
 	return nil
 }
 
 func report(ep *EditorPanel, b buffer.Type, message string) {
-	ep.where = b.Insert(ep.where, ' ')
-	ep.where = b.Insert(ep.where, '(')
+	b.Insert(ep.where, ' ')
+	ep.where.RightOne()
+	b.Insert(ep.where, '(')
+	ep.where.RightOne()
 	for _, rune := range message {
-		ep.where = b.Insert(ep.where, rune)
+		b.Insert(ep.where, rune)
+		ep.where.RightOne()
 	}
-	ep.where = b.Insert(ep.where, ')')
-	ep.where = b.Insert(ep.where, ' ')
+	b.Insert(ep.where, ')')
+	ep.where.RightOne()
+	b.Insert(ep.where, ' ')
+	ep.where.RightOne()
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {

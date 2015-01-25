@@ -11,8 +11,8 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Type interface {
-	// Insert inserts the rune at the current position and moves right.
-	Insert(where grid.LineCol, ch rune) grid.LineCol
+	// Insert inserts the rune at the current position.
+	Insert(where grid.LineCol, ch rune)
 
 	// DeleteLine(n) deletes line n from the buffer
 	DeleteLine(where grid.LineCol) grid.LineCol
@@ -33,12 +33,6 @@ type Type interface {
 	Execute(grid.LineCol) (grid.LineCol, error)
 
 	PutLines(c screen.Canvas, first, n int)
-
-	// SetWhere sets the current position to be where.
-	// SetWhere(where grid.LineCol)
-
-	// Where returns the current position
-	// Where() grid.LineCol
 
 	// attempt to eliminate?
 	Expose() []string
@@ -134,7 +128,7 @@ func (b *SimpleBuffer) makeRoom(where grid.LineCol) {
 	}
 }
 
-func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) grid.LineCol {
+func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) {
 
 	b.makeRoom(where)
 
@@ -146,10 +140,7 @@ func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) grid.LineCol {
 	C := append(B, ch)
 	D := append(C, runes[loc:]...)
 
-	where.Col += 1
 	b.content[where.Line] = string(D)
-
-	return where
 }
 
 func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
@@ -204,14 +195,6 @@ func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 		row += 1
 	}
 }
-
-// func (s *SimpleBuffer) Where() grid.LineCol {
-// 	return s.where
-//}
-
-// func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
-// 	s.where = where
-// }
 
 func New(execute func(Type, string) error) Type {
 	return &SimpleBuffer{
