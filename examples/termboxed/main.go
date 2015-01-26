@@ -34,9 +34,9 @@ type EventHandler interface {
 	New() EventHandler
 }
 
-type Focus struct {
-	where  *grid.LineCol
-	buffer *buffer.Type
+type State struct {
+	where  grid.LineCol
+	buffer buffer.Type
 }
 
 type EditorPanel struct {
@@ -49,15 +49,11 @@ type EditorPanel struct {
 	rightBar  screen.Canvas
 	textBox   screen.Canvas
 
-	mainBuffer buffer.Type
-	lineBuffer buffer.Type
-
-	focus Focus
-	// focusBuffer *buffer.Type
+	current *State
+	main    State
+	command State
 
 	verticalOffset int
-	where          grid.LineCol
-	otherWhere     grid.LineCol
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -74,24 +70,24 @@ func readIntoBuffer(ep *EditorPanel, b buffer.Type, fileName string) error {
 		return err
 	}
 	defer f.Close()
-	w, err := b.ReadFromFile(ep.where, fileName, f)
-	ep.where = w
+	w, err := b.ReadFromFile(ep.main.where, fileName, f)
+	ep.main.where = w
 	return err
 }
 
 var commands = map[string]func(*EditorPanel, []string) error{
 	"r": func(ep *EditorPanel, blobs []string) error {
-		b := ep.mainBuffer
+		b := ep.main.buffer
 		return readIntoBuffer(ep, b, blobs[1])
 	},
 	"w": func(ep *EditorPanel, blobs []string) error {
-		b := ep.mainBuffer
+		b := ep.main.buffer
 		return b.WriteToFile(blobs[1:])
 	},
 	"d": func(ep *EditorPanel, blobs []string) error {
-		b := ep.mainBuffer
-		lineNumber := ep.where.Line
-		b.DeleteLine(ep.where)
+		b := ep.main.buffer
+		lineNumber := ep.current.where.Line
+		b.DeleteLine(ep.current.where)
 		if ep.firstMarkedLine > 0 {
 			first, last := ep.firstMarkedLine-1, ep.lastMarkedLine-1
 			if lineNumber <= last {
@@ -105,8 +101,8 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
 		if ep.firstMarkedLine > 0 {
-			b := ep.mainBuffer
-			ep.where = b.DeleteLines(ep.where, ep.firstMarkedLine-1, ep.lastMarkedLine-1)
+			b := ep.main.buffer
+			ep.current.where = b.DeleteLines(ep.current.where, ep.firstMarkedLine-1, ep.lastMarkedLine-1)
 			ep.firstMarkedLine, ep.lastMarkedLine = 0, 0
 			return nil
 		} else {
@@ -119,23 +115,22 @@ func NewEditorPanel() EventHandler {
 	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
-		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
-		lineBuffer: buffer.New(func(b buffer.Type, s string) error {
+		main: State{buffer: mb},
+
+		command: State{buffer: buffer.New(func(b buffer.Type, s string) error {
 			content := b.Expose()
-			line := ep.otherWhere.Line
+			line := ep.command.where.Line
 			blobs := strings.Split(content[line], " ")
-			// c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
 			command := commands[blobs[0]]
 			if command == nil {
 				return errors.New("not a command: " + blobs[0])
 			} else {
 				return command(ep, blobs)
 			}
-			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}),
-		// where: grid.LineCol{Line: 0, Col: 0},
+		},
 	}
-	ep.focus = Focus{buffer: &ep.mainBuffer, where: &ep.otherWhere}
+	ep.current = &ep.main
 	return ep
 }
 
@@ -144,7 +139,7 @@ func (ep *EditorPanel) New() EventHandler {
 }
 
 func (ep *EditorPanel) Key(e *termbox.Event) error {
-	b := *ep.focus.buffer
+	b := ep.current.buffer
 	if e.Ch == 0 {
 		switch e.Key {
 
@@ -152,83 +147,83 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			// nothing
 
 		case termbox.KeyF1:
-			ep.focus = Focus{buffer: &ep.lineBuffer, where: &ep.otherWhere}
-			ep.lineBuffer.Return(ep.otherWhere)
-			*ep.focus.where = grid.LineCol{Line: ep.otherWhere.Line + 1, Col: 0}
+			ep.current = &ep.command
+			ep.command.buffer.Return(ep.command.where)
+			ep.current.where = grid.LineCol{Line: ep.command.where.Line + 1, Col: 0}
 
 		case termbox.KeyF2:
-			ep.otherWhere, _ = ep.lineBuffer.Execute(ep.otherWhere)
+			ep.command.where, _ = ep.command.buffer.Execute(ep.command.where)
 
 		case termbox.KeyCtrlB:
-			if ep.focus.buffer == &ep.mainBuffer {
-				ep.focus = Focus{buffer: &ep.lineBuffer, where: &ep.otherWhere}
+			if ep.current == &ep.main {
+				ep.current = &ep.command
 			} else {
-				ep.focus = Focus{buffer: &ep.mainBuffer, where: &ep.where}
+				ep.current = &ep.main
 			}
 
 		case termbox.KeySpace:
-			b.Insert(*ep.focus.where, ' ')
-			ep.focus.where.RightOne()
+			b.Insert(ep.current.where, ' ')
+			ep.current.where.RightOne()
 
 		case termbox.KeyBackspace2:
-			*ep.focus.where = b.DeleteBack(*ep.focus.where)
+			ep.current.where = b.DeleteBack(ep.current.where)
 
 		case termbox.KeyDelete:
-			*ep.focus.where = b.DeleteForward(*ep.focus.where)
+			ep.current.where = b.DeleteForward(ep.current.where)
 
 		case termbox.KeyF3:
-			where := ep.focus.where
+			where := ep.current.where
 			ep.firstMarkedLine = where.Line + 1
 			if ep.lastMarkedLine < ep.firstMarkedLine {
 				ep.lastMarkedLine = ep.firstMarkedLine
 			}
 
 		case termbox.KeyF4:
-			where := ep.focus.where
+			where := ep.current.where
 			ep.lastMarkedLine = where.Line + 1
 			if ep.firstMarkedLine > ep.lastMarkedLine {
 				ep.firstMarkedLine = ep.lastMarkedLine
 			}
 
 		case termbox.KeyPgup:
-			where := ep.where
+			where := ep.current.where
 			vo := ep.verticalOffset
 			if where.Line-vo == 0 {
 				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
-				ep.where = grid.LineCol{top, where.Col}
+				ep.current.where = grid.LineCol{top, where.Col}
 			} else {
-				ep.where = grid.LineCol{vo, where.Col}
+				ep.current.where = grid.LineCol{vo, where.Col}
 			}
 
 		case termbox.KeyPgdn:
-			where := ep.where
+			where := ep.current.where
 			vo := ep.verticalOffset
 			height := ep.textBox.Size().Height
 			if where.Line-vo == height-1 {
 				// forward one page
 				bot := where.Line + height
-				ep.where = grid.LineCol{bot, where.Col}
+				ep.current.where = grid.LineCol{bot, where.Col}
 			} else {
 				// bottom of this page
-				ep.where = grid.LineCol{vo + height - 1, where.Col}
+				ep.current.where = grid.LineCol{vo + height - 1, where.Col}
 			}
 
 		case termbox.KeyEnd:
-			where := ep.focus.where
+			where := ep.current.where
 			if where.Col == 0 {
 				contents := b.Expose()
-				line := contents[ep.focus.where.Line]
+				line := contents[ep.current.where.Line]
 				where.Col = len(line)
 			} else {
 				where.Col = 0
 			}
-			ep.focus.where = where
+			ep.current.where = where
 
 		case termbox.KeyEnter:
-			if ep.focus.buffer == &ep.mainBuffer {
-				ep.where = b.Return(ep.where)
+			if ep.current == &ep.main {
+				ep.current.where = b.Return(ep.current.where)
 				if ep.firstMarkedLine > 0 {
-					lineNumber := ep.focus.where.Line
+					lineNumber := ep.current.where.Line
 					first, last := ep.firstMarkedLine+1, ep.lastMarkedLine+1
 					if lineNumber < last {
 						ep.lastMarkedLine += 1
@@ -236,58 +231,58 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 					if lineNumber < first-1 {
 						ep.firstMarkedLine += 1
 					}
-					report(ep, ep.lineBuffer, "zingo")
+					report(ep, ep.command.buffer, "zingo")
 				}
 
 			} else {
-				_, err := b.Execute(*ep.focus.where)
+				_, err := b.Execute(ep.current.where)
 				if err == nil {
 					report(ep, b, "OK")
 				} else {
 					report(ep, b, err.Error())
 				}
-				ep.focus = Focus{buffer: &ep.mainBuffer, where: &ep.where}
+				ep.current = &ep.main
 			}
 
 		case termbox.KeyArrowRight:
-			ep.focus.where.RightOne()
+			ep.current.where.RightOne()
 
 		case termbox.KeyArrowUp:
-			ep.focus.where.UpOne()
+			ep.current.where.UpOne()
 
 		case termbox.KeyArrowDown:
-			ep.focus.where.DownOne()
+			ep.current.where.DownOne()
 
 		case termbox.KeyArrowLeft:
-			ep.focus.where.LeftOne()
+			ep.current.where.LeftOne()
 
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 			for _, ch := range report {
-				b.Insert(*ep.focus.where, rune(ch))
-				ep.focus.where.RightOne()
+				b.Insert(ep.current.where, rune(ch))
+				ep.current.where.RightOne()
 			}
 		}
 	} else {
-		b.Insert(*ep.focus.where, e.Ch)
-		ep.focus.where.RightOne()
+		b.Insert(ep.current.where, e.Ch)
+		ep.current.where.RightOne()
 	}
 	return nil
 }
 
 func report(ep *EditorPanel, b buffer.Type, message string) {
-	b.Insert(*ep.focus.where, ' ')
-	ep.focus.where.RightOne()
-	b.Insert(*ep.focus.where, '(')
-	ep.focus.where.RightOne()
+	b.Insert(ep.current.where, ' ')
+	ep.current.where.RightOne()
+	b.Insert(ep.current.where, '(')
+	ep.current.where.RightOne()
 	for _, rune := range message {
-		b.Insert(*ep.focus.where, rune)
-		ep.focus.where.RightOne()
+		b.Insert(ep.current.where, rune)
+		ep.current.where.RightOne()
 	}
-	b.Insert(*ep.focus.where, ')')
-	ep.focus.where.RightOne()
-	b.Insert(*ep.focus.where, ' ')
-	ep.focus.where.RightOne()
+	b.Insert(ep.current.where, ')')
+	ep.current.where.RightOne()
+	b.Insert(ep.current.where, ' ')
+	ep.current.where.RightOne()
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
@@ -295,18 +290,18 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
-		ep.where = grid.LineCol{y - 1, x - 1}
-		ep.focus = Focus{buffer: &ep.mainBuffer, where: &ep.where}
+		ep.current.where = grid.LineCol{y - 1, x - 1}
+		ep.current = &ep.main
 	} else if x >= delta && y == 0 {
-		ep.otherWhere = grid.LineCol{0, x - delta}
-		ep.focus = Focus{where: &ep.otherWhere, buffer: &ep.lineBuffer}
+		ep.command.where = grid.LineCol{0, x - delta}
+		ep.current = &ep.command
 	}
 	return nil
 }
 
 func (ep *EditorPanel) AdjustScrolling() {
 	size := ep.textBox.Size()
-	line := ep.where.Line
+	line := ep.current.where.Line
 	h := size.Height
 	if line < ep.verticalOffset {
 		ep.verticalOffset = line
@@ -320,11 +315,11 @@ func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
 	bottomSize := ep.bottomBar.Size()
 	w := bottomSize.Width
-	content := ep.mainBuffer.Expose()
-	line := ep.where.Line
+	content := ep.main.buffer.Expose()
+	line := ep.current.where.Line
 	textBoxSize := ep.textBox.Size()
 	textHeight := textBoxSize.Height
-	ep.mainBuffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
+	ep.main.buffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
 	//
 	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -346,8 +341,8 @@ func (ep *EditorPanel) Paint() error {
 	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
 	// HACK -- shouldn't need to remake each time
-	tline := ep.otherWhere.Line
-	ep.lineBuffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
+	tline := ep.command.where.Line
+	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
 	//
 	length := bounds.Max(line, len(content))
 	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
@@ -408,12 +403,12 @@ func (t *TextBox) SetCursor(where grid.LineCol) {
 }
 
 func (ep *EditorPanel) SetCursor() error {
-	if ep.focus.buffer == &ep.mainBuffer {
-		where := ep.where.LineMinus(ep.verticalOffset)
-		ep.textBox.SetCursor(where) // (where.ColPlus(delta))
+	if ep.current == &ep.main {
+		where := ep.current.where.LineMinus(ep.verticalOffset)
+		ep.textBox.SetCursor(where)
 	} else {
-		where := ep.otherWhere                                  // .LineMinus(ep.verticalOffset)
-		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta}) // (where)
+		where := ep.command.where
+		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
 	}
 	return nil
 }
