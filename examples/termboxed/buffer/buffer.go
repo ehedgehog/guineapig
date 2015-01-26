@@ -17,6 +17,8 @@ type Type interface {
 	// DeleteLine(n) deletes line n from the buffer
 	DeleteLine(where grid.LineCol) grid.LineCol
 
+	InsertLines(where grid.LineCol, lines []string) grid.LineCol
+
 	DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol
 
 	// DeleteBack delete the previous rune if not at line start. Otherwise
@@ -53,6 +55,16 @@ type SimpleBuffer struct {
 
 func (b *SimpleBuffer) Expose() (content []string) {
 	return b.content
+}
+
+func (b *SimpleBuffer) InsertLines(where grid.LineCol, lines []string) grid.LineCol {
+	line := where.Line
+	newlines := make([]string, 0, len(b.content)+len(lines)+10)
+	A := append(newlines, b.content[0:line]...)
+	B := append(A, lines...)
+	C := append(B, b.content[line:]...)
+	b.content = C
+	return where // TODO
 }
 
 func (b *SimpleBuffer) DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol {

@@ -127,6 +127,19 @@ var commands = map[string]func(*EditorPanel, []string) error{
 		b := ep.main.buffer
 		return readIntoBuffer(ep, b, blobs[1])
 	},
+	"mr": func(ep *EditorPanel, blobs []string) error {
+		b := ep.main.buffer
+		if ep.main.marked.IsActive() {
+			// lines := ep.main.buffer.Expose()
+			first, last := ep.main.marked.Range()
+			// retain := lines[first : last+1]
+			b.DeleteLines(ep.main.where, first, last)
+			// b.InsertLines(ep.main.where, retain)
+			return nil
+		} else {
+			return errors.New("no marked range")
+		}
+	},
 	"w": func(ep *EditorPanel, blobs []string) error {
 		b := ep.main.buffer
 		return b.WriteToFile(blobs[1:])
