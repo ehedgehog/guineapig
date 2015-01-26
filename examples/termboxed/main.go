@@ -34,15 +34,58 @@ type EventHandler interface {
 	New() EventHandler
 }
 
+type MarkedRange struct {
+	firstMarkedLine int
+	lastMarkedLine  int
+}
+
+func (mr *MarkedRange) Range() (first, last int) {
+	if mr.firstMarkedLine == 0 {
+		return -1, -1
+	}
+	return mr.firstMarkedLine - 1, mr.lastMarkedLine - 1
+}
+
+func (mr *MarkedRange) Clear() {
+	mr.firstMarkedLine, mr.lastMarkedLine = 0, 0
+}
+
+func (mr *MarkedRange) IsActive() bool {
+	return mr.firstMarkedLine > 0
+}
+
+func (mr *MarkedRange) SetLow(lineNumber int) {
+	mr.firstMarkedLine = lineNumber + 1
+	if mr.lastMarkedLine < mr.firstMarkedLine {
+		mr.lastMarkedLine = mr.firstMarkedLine
+	}
+}
+
+func (mr *MarkedRange) SetHigh(lineNumber int) {
+	mr.lastMarkedLine = lineNumber + 1
+	if mr.firstMarkedLine > mr.lastMarkedLine {
+		mr.firstMarkedLine = mr.lastMarkedLine
+	}
+}
+
+func (mr *MarkedRange) Return(lineNumber int) {
+	if mr.IsActive() {
+		if lineNumber <= mr.lastMarkedLine {
+			mr.lastMarkedLine += 1
+		}
+		if lineNumber < mr.firstMarkedLine {
+			mr.firstMarkedLine += 1
+		}
+	}
+}
+
 type State struct {
 	where  grid.LineCol
 	buffer buffer.Type
+	marked MarkedRange
 }
 
 type EditorPanel struct {
-	firstMarkedLine int
-	lastMarkedLine  int
-
 	topBar    screen.Canvas
 	bottomBar screen.Canvas
 	leftBar   screen.Canvas
@@ -88,22 +131,23 @@ var commands = map[string]func(*EditorPanel, []string) error{
 		b := ep.main.buffer
 		lineNumber := ep.current.where.Line
 		b.DeleteLine(ep.current.where)
-		if ep.firstMarkedLine > 0 {
-			first, last := ep.firstMarkedLine-1, ep.lastMarkedLine-1
+		if ep.main.marked.IsActive() {
+			first, last := ep.main.marked.Range()
 			if lineNumber <= last {
-				ep.lastMarkedLine -= 1
+				ep.main.marked.lastMarkedLine -= 1
 				if lineNumber < first {
-					ep.firstMarkedLine -= 1
+					ep.main.marked.firstMarkedLine -= 1
 				}
 			}
 		}
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
-		if ep.firstMarkedLine > 0 {
+		if ep.main.marked.IsActive() {
 			b := ep.main.buffer
-			ep.current.where = b.DeleteLines(ep.current.where, ep.firstMarkedLine-1, ep.lastMarkedLine-1)
-			ep.firstMarkedLine, ep.lastMarkedLine = 0, 0
+			first, last := ep.main.marked.Range()
+			ep.current.where = b.DeleteLines(ep.current.where, first, last)
+			ep.main.marked.Clear()
 			return nil
 		} else {
 			return errors.New("no marked range")
@@ -172,18 +216,10 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			ep.current.where = b.DeleteForward(ep.current.where)
 
 		case termbox.KeyF3:
-			where := ep.current.where
-			ep.firstMarkedLine = where.Line + 1
-			if ep.lastMarkedLine < ep.firstMarkedLine {
-				ep.lastMarkedLine = ep.firstMarkedLine
-			}
+			ep.main.marked.SetLow(ep.main.where.Line)
 
 		case termbox.KeyF4:
-			where := ep.current.where
-			ep.lastMarkedLine = where.Line + 1
-			if ep.firstMarkedLine > ep.lastMarkedLine {
-				ep.firstMarkedLine = ep.lastMarkedLine
-			}
+			ep.main.marked.SetHigh(ep.main.where.Line)
 
 		case termbox.KeyPgup:
 			where := ep.current.where
@@ -222,18 +258,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 		case termbox.KeyEnter:
 			if ep.current == &ep.main {
 				ep.current.where = b.Return(ep.current.where)
-				if ep.firstMarkedLine > 0 {
-					lineNumber := ep.current.where.Line
-					first, last := ep.firstMarkedLine+1, ep.lastMarkedLine+1
-					if lineNumber < last {
-						ep.lastMarkedLine += 1
-					}
-					if lineNumber < first-1 {
-						ep.firstMarkedLine += 1
-					}
-					report(ep, ep.command.buffer, "zingo")
-				}
-
+				ep.main.marked.Return(ep.current.where.Line)
 			} else {
 				_, err := b.Execute(ep.current.where)
 				if err == nil {
@@ -381,10 +406,9 @@ var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
-
-		// log.Println("range:", t.ep.firstMarkedLine, "to", t.ep.lastMarkedLine)
 		ep := t.ep
-		if ep.firstMarkedLine-1-ep.verticalOffset <= where.Line && where.Line <= ep.lastMarkedLine-1-ep.verticalOffset {
+		first, last := ep.main.marked.Range()
+		if first-ep.verticalOffset <= where.Line && where.Line <= last-ep.verticalOffset {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
 		}
 		s := fmt.Sprintf("%4v", where.Line+ep.verticalOffset)
