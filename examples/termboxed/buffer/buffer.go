@@ -145,7 +145,6 @@ func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) {
 func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
 	b.makeRoom(where)
 	return where, b.execute(b, b.content[where.Line])
-	// return where, errors.New("execute not implemented yet.")
 }
 
 func New(execute func(Type, string) error) Type {
