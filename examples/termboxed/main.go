@@ -122,7 +122,7 @@ func NewEditorPanel() EventHandler {
 		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
 		lineBuffer: buffer.New(func(b buffer.Type, s string) error {
 			content := b.Expose()
-			line := ep.where.Line
+			line := ep.otherWhere.Line
 			blobs := strings.Split(content[line], " ")
 			// c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
 			command := commands[blobs[0]]
@@ -153,7 +153,8 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 		case termbox.KeyF1:
 			ep.focus = Focus{buffer: &ep.lineBuffer, where: &ep.otherWhere}
-			// ep.otherWhere = ep.lineBuffer.Return(ep.otherWhere)
+			ep.lineBuffer.Return(ep.otherWhere)
+			*ep.focus.where = grid.LineCol{Line: ep.otherWhere.Line + 1, Col: 0}
 
 		case termbox.KeyF2:
 			ep.otherWhere, _ = ep.lineBuffer.Execute(ep.otherWhere)
