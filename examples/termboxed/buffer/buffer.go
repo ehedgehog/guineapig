@@ -2,7 +2,7 @@ package buffer
 
 import (
 	"bufio"
-	"errors"
+	//	"errors"
 	"io"
 	"os"
 )
@@ -144,8 +144,15 @@ func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) {
 
 func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
 	b.makeRoom(where)
-	// return b.execute(b, b.content[where.Line])
-	return where, errors.New("execute not implemented yet.")
+	return where, b.execute(b, b.content[where.Line])
+	// return where, errors.New("execute not implemented yet.")
+}
+
+func New(execute func(Type, string) error) Type {
+	return &SimpleBuffer{
+		content: []string{},
+		execute: execute,
+	}
 }
 
 func (b *SimpleBuffer) Return(where grid.LineCol) grid.LineCol {
@@ -192,12 +199,5 @@ func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	for line := first; line < len(content) && row < n; line += 1 {
 		screen.PutString(w, 0, row, content[line], screen.DefaultStyle)
 		row += 1
-	}
-}
-
-func New(execute func(Type, string) error) Type {
-	return &SimpleBuffer{
-		content: []string{},
-		execute: execute,
 	}
 }
