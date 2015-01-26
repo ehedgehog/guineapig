@@ -79,10 +79,16 @@ func (mr *MarkedRange) Return(lineNumber int) {
 	}
 }
 
+type Offset struct {
+	vertical   int
+	horizontal int
+}
+
 type State struct {
 	where  grid.LineCol
 	buffer buffer.Type
 	marked MarkedRange
+	offset Offset
 }
 
 type EditorPanel struct {
@@ -95,8 +101,6 @@ type EditorPanel struct {
 	current *State
 	main    State
 	command State
-
-	verticalOffset int
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -223,7 +227,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 		case termbox.KeyPgup:
 			where := ep.current.where
-			vo := ep.verticalOffset
+			vo := ep.current.offset.vertical
 			if where.Line-vo == 0 {
 				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
 				ep.current.where = grid.LineCol{top, where.Col}
@@ -233,7 +237,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 
 		case termbox.KeyPgdn:
 			where := ep.current.where
-			vo := ep.verticalOffset
+			vo := ep.current.offset.vertical
 			height := ep.textBox.Size().Height
 			if where.Line-vo == height-1 {
 				// forward one page
@@ -328,11 +332,11 @@ func (ep *EditorPanel) AdjustScrolling() {
 	size := ep.textBox.Size()
 	line := ep.current.where.Line
 	h := size.Height
-	if line < ep.verticalOffset {
-		ep.verticalOffset = line
+	if line < ep.current.offset.vertical {
+		ep.current.offset.vertical = line
 	}
-	if line > ep.verticalOffset+h-1 {
-		ep.verticalOffset = line - h + 1
+	if line > ep.current.offset.vertical+h-1 {
+		ep.current.offset.vertical = line - h + 1
 	}
 }
 
@@ -344,7 +348,7 @@ func (ep *EditorPanel) Paint() error {
 	line := ep.current.where.Line
 	textBoxSize := ep.textBox.Size()
 	textHeight := textBoxSize.Height
-	ep.main.buffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
+	ep.main.buffer.PutLines(ep.textBox, ep.current.offset.vertical, textHeight)
 	//
 	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -408,10 +412,10 @@ func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
 		ep := t.ep
 		first, last := ep.main.marked.Range()
-		if first-ep.verticalOffset <= where.Line && where.Line <= last-ep.verticalOffset {
+		if first-ep.current.offset.vertical <= where.Line && where.Line <= last-ep.current.offset.vertical {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
 		}
-		s := fmt.Sprintf("%4v", where.Line+ep.verticalOffset)
+		s := fmt.Sprintf("%4v", where.Line+ep.current.offset.vertical)
 		for i, ch := range s {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
 		}
@@ -428,7 +432,7 @@ func (t *TextBox) SetCursor(where grid.LineCol) {
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
-		where := ep.current.where.LineMinus(ep.verticalOffset)
+		where := ep.current.where.LineMinus(ep.current.offset.vertical)
 		ep.textBox.SetCursor(where)
 	} else {
 		where := ep.command.where
