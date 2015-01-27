@@ -17,7 +17,7 @@ type Type interface {
 	// DeleteLine(n) deletes line n from the buffer
 	DeleteLine(where grid.LineCol) grid.LineCol
 
-	InsertLines(where grid.LineCol, lines []string) grid.LineCol
+	MoveLines(where grid.LineCol, firstLine, lastLine int)
 
 	DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol
 
@@ -57,14 +57,24 @@ func (b *SimpleBuffer) Expose() (content []string) {
 	return b.content
 }
 
-func (b *SimpleBuffer) InsertLines(where grid.LineCol, lines []string) grid.LineCol {
-	line := where.Line
-	newlines := make([]string, 0, len(b.content)+len(lines)+10)
-	A := append(newlines, b.content[0:line]...)
-	B := append(A, lines...)
-	C := append(B, b.content[line:]...)
-	b.content = C
-	return where // TODO
+func (b *SimpleBuffer) MoveLines(where grid.LineCol, firstLine, lastLine int) {
+	lines := b.content
+	target := where.Line
+	newContent := make([]string, 0, len(lines))
+
+	if target < firstLine {
+		newContent = append(newContent, lines[0:target+1]...)
+		newContent = append(newContent, lines[firstLine:lastLine+1]...)
+		newContent = append(newContent, lines[target+1:firstLine]...)
+		newContent = append(newContent, lines[lastLine+1:]...)
+
+	} else if target > lastLine {
+		panic("target > lastLine, not implemented")
+	} else {
+		panic("target within range")
+	}
+
+	b.content = newContent
 }
 
 func (b *SimpleBuffer) DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol {

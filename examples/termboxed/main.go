@@ -130,11 +130,8 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	"mr": func(ep *EditorPanel, blobs []string) error {
 		b := ep.main.buffer
 		if ep.main.marked.IsActive() {
-			// lines := ep.main.buffer.Expose()
 			first, last := ep.main.marked.Range()
-			// retain := lines[first : last+1]
-			b.DeleteLines(ep.main.where, first, last)
-			// b.InsertLines(ep.main.where, retain)
+			b.MoveLines(ep.main.where, first, last)
 			return nil
 		} else {
 			return errors.New("no marked range")
@@ -421,14 +418,22 @@ type TextBox struct {
 
 var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
+var hereStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorBlack)
+
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
 		ep := t.ep
+
+		verticalOffset := ep.main.offset.vertical
+		if where.Line+verticalOffset == ep.main.where.Line {
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 2}, '+', hereStyle)
+		}
+
 		first, last := ep.main.marked.Range()
-		if first-ep.current.offset.vertical <= where.Line && where.Line <= last-ep.current.offset.vertical {
+		if first-verticalOffset <= where.Line && where.Line <= last-verticalOffset {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
 		}
-		s := fmt.Sprintf("%4v", where.Line+ep.current.offset.vertical)
+		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
 		for i, ch := range s {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
 		}
