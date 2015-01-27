@@ -130,7 +130,11 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	"mr": func(ep *EditorPanel, blobs []string) error {
 		b := ep.main.buffer
 		if ep.main.marked.IsActive() {
+			target := ep.main.where.Line
 			first, last := ep.main.marked.Range()
+			if first <= target && target <= last {
+				return errors.New("range overlaps target")
+			}
 			b.MoveLines(ep.main.where, first, last)
 			return nil
 		} else {
