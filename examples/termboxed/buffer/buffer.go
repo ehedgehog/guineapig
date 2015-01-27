@@ -63,13 +63,19 @@ func (b *SimpleBuffer) MoveLines(where grid.LineCol, firstLine, lastLine int) {
 	newContent := make([]string, 0, len(lines))
 
 	if target < firstLine {
+
 		newContent = append(newContent, lines[0:target+1]...)
 		newContent = append(newContent, lines[firstLine:lastLine+1]...)
 		newContent = append(newContent, lines[target+1:firstLine]...)
 		newContent = append(newContent, lines[lastLine+1:]...)
 
 	} else if target > lastLine {
-		panic("target > lastLine, not implemented")
+
+		newContent = append(newContent, lines[0:firstLine]...)
+		newContent = append(newContent, lines[lastLine:target+1]...)
+		newContent = append(newContent, lines[firstLine:lastLine+1]...)
+		newContent = append(newContent, lines[target+1:]...)
+
 	} else {
 		panic("target within range")
 	}
