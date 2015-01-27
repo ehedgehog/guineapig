@@ -34,19 +34,73 @@ type EventHandler interface {
 	New() EventHandler
 }
 
-type EditorPanel struct {
+type MarkedRange struct {
 	firstMarkedLine int
 	lastMarkedLine  int
-	topBar          screen.Canvas
-	bottomBar       screen.Canvas
-	leftBar         screen.Canvas
-	rightBar        screen.Canvas
-	textBox         screen.Canvas
-	mainBuffer      buffer.Type
-	lineBuffer      buffer.Type
-	focusBuffer     *buffer.Type
-	verticalOffset  int
-	// where           grid.LineCol
+}
+
+func (mr *MarkedRange) Range() (first, last int) {
+	if mr.firstMarkedLine == 0 {
+		return -1, -1
+	}
+	return mr.firstMarkedLine - 1, mr.lastMarkedLine - 1
+}
+
+func (mr *MarkedRange) Clear() {
+	mr.firstMarkedLine, mr.lastMarkedLine = 0, 0
+}
+
+func (mr *MarkedRange) IsActive() bool {
+	return mr.firstMarkedLine > 0
+}
+
+func (mr *MarkedRange) SetLow(lineNumber int) {
+	mr.firstMarkedLine = lineNumber + 1
+	if mr.lastMarkedLine < mr.firstMarkedLine {
+		mr.lastMarkedLine = mr.firstMarkedLine
+	}
+}
+
+func (mr *MarkedRange) SetHigh(lineNumber int) {
+	mr.lastMarkedLine = lineNumber + 1
+	if mr.firstMarkedLine > mr.lastMarkedLine {
+		mr.firstMarkedLine = mr.lastMarkedLine
+	}
+}
+
+func (mr *MarkedRange) Return(lineNumber int) {
+	if mr.IsActive() {
+		if lineNumber <= mr.lastMarkedLine {
+			mr.lastMarkedLine += 1
+		}
+		if lineNumber < mr.firstMarkedLine {
+			mr.firstMarkedLine += 1
+		}
+	}
+}
+
+type Offset struct {
+	vertical   int
+	horizontal int
+}
+
+type State struct {
+	where  grid.LineCol
+	buffer buffer.Type
+	marked MarkedRange
+	offset Offset
+}
+
+type EditorPanel struct {
+	topBar    screen.Canvas
+	bottomBar screen.Canvas
+	leftBar   screen.Canvas
+	rightBar  screen.Canvas
+	textBox   screen.Canvas
+
+	current *State
+	main    State
+	command State
 }
 
 func (ep *EditorPanel) Geometry() Geometry {
@@ -57,43 +111,88 @@ func (ep *EditorPanel) Geometry() Geometry {
 	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
 }
 
-func readIntoBuffer(b buffer.Type, fileName string) error {
+func readIntoBuffer(ep *EditorPanel, b buffer.Type, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return b.ReadFromFile(fileName, f)
+	w, err := b.ReadFromFile(ep.main.where, fileName, f)
+	ep.main.where = w
+	return err
 }
 
-var commands = map[string]func(buffer.Type, []string) error{
-	"r": func(b buffer.Type, blobs []string) error {
-		return readIntoBuffer(b, blobs[1])
+var commands = map[string]func(*EditorPanel, []string) error{
+	"r": func(ep *EditorPanel, blobs []string) error {
+		b := ep.main.buffer
+		return readIntoBuffer(ep, b, blobs[1])
 	},
-	"w": func(b buffer.Type, blobs []string) error {
+	"mr": func(ep *EditorPanel, blobs []string) error {
+		b := ep.main.buffer
+		if ep.main.marked.IsActive() {
+			target := ep.main.where.Line
+			first, last := ep.main.marked.Range()
+			if first <= target && target <= last {
+				return errors.New("range overlaps target")
+			}
+			b.MoveLines(ep.main.where, first, last)
+			return nil
+		} else {
+			return errors.New("no marked range")
+		}
+	},
+	"w": func(ep *EditorPanel, blobs []string) error {
+		b := ep.main.buffer
 		return b.WriteToFile(blobs[1:])
+	},
+	"d": func(ep *EditorPanel, blobs []string) error {
+		b := ep.main.buffer
+		lineNumber := ep.current.where.Line
+		b.DeleteLine(ep.current.where)
+		if ep.main.marked.IsActive() {
+			first, last := ep.main.marked.Range()
+			if lineNumber <= last {
+				ep.main.marked.lastMarkedLine -= 1
+				if lineNumber < first {
+					ep.main.marked.firstMarkedLine -= 1
+				}
+			}
+		}
+		return nil
+	},
+	"dr": func(ep *EditorPanel, blobs []string) error {
+		if ep.main.marked.IsActive() {
+			b := ep.main.buffer
+			first, last := ep.main.marked.Range()
+			ep.current.where = b.DeleteLines(ep.current.where, first, last)
+			ep.main.marked.Clear()
+			return nil
+		} else {
+			return errors.New("no marked range")
+		}
 	},
 }
 
 func NewEditorPanel() EventHandler {
 	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
-	ep := &EditorPanel{
-		mainBuffer: mb, // buffer.New(func(b buffer.Type, s string) {}, 0, 0),
-		lineBuffer: buffer.New(func(b buffer.Type, s string) error {
-			line, content := b.Expose()
+	var ep *EditorPanel
+	ep = &EditorPanel{
+		main: State{buffer: mb},
+
+		command: State{buffer: buffer.New(func(b buffer.Type, s string) error {
+			content := b.Expose()
+			line := ep.command.where.Line
 			blobs := strings.Split(content[line], " ")
-			// c := screen.NewSubCanvas(screen.NewTermboxCanvas(), 40, 40, 40, 40)
 			command := commands[blobs[0]]
 			if command == nil {
 				return errors.New("not a command: " + blobs[0])
 			} else {
-				return command(mb, blobs)
+				return command(ep, blobs)
 			}
-			// screen.PutString(c, 0, 0, "-- "+blobs[0]+" --", screen.DefaultStyle)
 		}),
-		// where: grid.LineCol{Line: 0, Col: 0},
+		},
 	}
-	ep.focusBuffer = &ep.mainBuffer
+	ep.current = &ep.main
 	return ep
 }
 
@@ -102,7 +201,7 @@ func (ep *EditorPanel) New() EventHandler {
 }
 
 func (ep *EditorPanel) Key(e *termbox.Event) error {
-	b := *ep.focusBuffer
+	b := ep.current.buffer
 	if e.Ch == 0 {
 		switch e.Key {
 
@@ -110,87 +209,123 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			// nothing
 
 		case termbox.KeyF1:
-			ep.focusBuffer = &ep.lineBuffer
-			ep.lineBuffer.Return()
+			ep.current = &ep.command
+			ep.command.buffer.Return(ep.command.where)
+			ep.current.where = grid.LineCol{Line: ep.command.where.Line + 1, Col: 0}
 
 		case termbox.KeyF2:
-			ep.lineBuffer.Execute()
+			ep.command.where, _ = ep.command.buffer.Execute(ep.command.where)
 
 		case termbox.KeyCtrlB:
-			if ep.focusBuffer == &ep.mainBuffer {
-				ep.focusBuffer = &ep.lineBuffer
+			if ep.current == &ep.main {
+				ep.current = &ep.command
 			} else {
-				ep.focusBuffer = &ep.mainBuffer
+				ep.current = &ep.main
 			}
 
 		case termbox.KeySpace:
-			b.Insert(' ')
+			b.Insert(ep.current.where, ' ')
+			ep.current.where.RightOne()
 
 		case termbox.KeyBackspace2:
-			b.DeleteBack()
+			ep.current.where = b.DeleteBack(ep.current.where)
 
 		case termbox.KeyDelete:
-			b.DeleteForward()
-
-		case termbox.KeyArrowLeft:
-			b.BackOne()
+			ep.current.where = b.DeleteForward(ep.current.where)
 
 		case termbox.KeyF3:
-			where := ep.mainBuffer.Where()
-			ep.firstMarkedLine = where.Line + 1
-			if ep.lastMarkedLine < ep.firstMarkedLine {
-				ep.lastMarkedLine = ep.firstMarkedLine
-			}
+			ep.main.marked.SetLow(ep.main.where.Line)
 
 		case termbox.KeyF4:
-			where := ep.mainBuffer.Where()
-			ep.lastMarkedLine = where.Line + 1
-			if ep.firstMarkedLine > ep.lastMarkedLine {
-				ep.firstMarkedLine = ep.lastMarkedLine
+			ep.main.marked.SetHigh(ep.main.where.Line)
+
+		case termbox.KeyPgup:
+			where := ep.current.where
+			vo := ep.current.offset.vertical
+			if where.Line-vo == 0 {
+				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
+				ep.current.where = grid.LineCol{top, where.Col}
+			} else {
+				ep.current.where = grid.LineCol{vo, where.Col}
 			}
 
-		case termbox.KeyEnter:
-			if ep.focusBuffer == &ep.mainBuffer {
-				b.Return()
+		case termbox.KeyPgdn:
+			where := ep.current.where
+			vo := ep.current.offset.vertical
+			height := ep.textBox.Size().Height
+			if where.Line-vo == height-1 {
+				// forward one page
+				bot := where.Line + height
+				ep.current.where = grid.LineCol{bot, where.Col}
 			} else {
-				err := b.Execute()
+				// bottom of this page
+				ep.current.where = grid.LineCol{vo + height - 1, where.Col}
+			}
+
+		case termbox.KeyEnd:
+			where := ep.current.where
+			if where.Col == 0 {
+				contents := b.Expose()
+				line := contents[ep.current.where.Line]
+				where.Col = len(line)
+			} else {
+				where.Col = 0
+			}
+			ep.current.where = where
+
+		case termbox.KeyEnter:
+			if ep.current == &ep.main {
+				ep.current.where = b.Return(ep.current.where)
+				ep.main.marked.Return(ep.current.where.Line)
+			} else {
+				_, err := b.Execute(ep.current.where)
 				if err == nil {
-					report(b, "OK")
+					report(ep, b, "OK")
 				} else {
-					report(b, err.Error())
+					report(ep, b, err.Error())
 				}
-				ep.focusBuffer = &ep.mainBuffer
+				ep.current = &ep.main
 			}
 
 		case termbox.KeyArrowRight:
-			b.ForwardOne()
+			ep.current.where.RightOne()
 
 		case termbox.KeyArrowUp:
-			b.UpOne()
+			ep.current.where.UpOne()
 
 		case termbox.KeyArrowDown:
-			b.DownOne()
+			ep.current.where.DownOne()
+
+		case termbox.KeyArrowLeft:
+			ep.current.where.LeftOne()
 
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
 			for _, ch := range report {
-				b.Insert(rune(ch))
+				b.Insert(ep.current.where, rune(ch))
+				ep.current.where.RightOne()
 			}
 		}
 	} else {
-		b.Insert(e.Ch)
+		b.Insert(ep.current.where, e.Ch)
+		ep.current.where.RightOne()
 	}
 	return nil
 }
 
-func report(b buffer.Type, message string) {
-	b.Insert(' ')
-	b.Insert('(')
+func report(ep *EditorPanel, b buffer.Type, message string) {
+	b.Insert(ep.current.where, ' ')
+	ep.current.where.RightOne()
+	b.Insert(ep.current.where, '(')
+	ep.current.where.RightOne()
 	for _, rune := range message {
-		b.Insert(rune)
+		b.Insert(ep.current.where, rune)
+		ep.current.where.RightOne()
 	}
-	b.Insert(')')
-	b.Insert(' ')
+	b.Insert(ep.current.where, ')')
+	ep.current.where.RightOne()
+	b.Insert(ep.current.where, ' ')
+	ep.current.where.RightOne()
 }
 
 func (ep *EditorPanel) Mouse(e *termbox.Event) error {
@@ -198,24 +333,24 @@ func (ep *EditorPanel) Mouse(e *termbox.Event) error {
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
-		ep.mainBuffer.SetWhere(grid.LineCol{y - 1, x - 1})
-		ep.focusBuffer = &ep.mainBuffer
+		ep.current.where = grid.LineCol{y - 1, x - 1}
+		ep.current = &ep.main
 	} else if x >= delta && y == 0 {
-		ep.lineBuffer.SetWhere(grid.LineCol{0, x - delta})
-		ep.focusBuffer = &ep.lineBuffer
+		ep.command.where = grid.LineCol{0, x - delta}
+		ep.current = &ep.command
 	}
 	return nil
 }
 
 func (ep *EditorPanel) AdjustScrolling() {
-	line, _ := ep.mainBuffer.Expose()
 	size := ep.textBox.Size()
+	line := ep.current.where.Line
 	h := size.Height
-	if line < ep.verticalOffset {
-		ep.verticalOffset = line
+	if line < ep.current.offset.vertical {
+		ep.current.offset.vertical = line
 	}
-	if line > ep.verticalOffset+h-1 {
-		ep.verticalOffset = line - h + 1
+	if line > ep.current.offset.vertical+h-1 {
+		ep.current.offset.vertical = line - h + 1
 	}
 }
 
@@ -223,10 +358,11 @@ func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
 	bottomSize := ep.bottomBar.Size()
 	w := bottomSize.Width
-	line, content := ep.mainBuffer.Expose()
+	content := ep.main.buffer.Expose()
+	line := ep.current.where.Line
 	textBoxSize := ep.textBox.Size()
 	textHeight := textBoxSize.Height
-	ep.mainBuffer.PutLines(ep.textBox, ep.verticalOffset, textHeight)
+	ep.main.buffer.PutLines(ep.textBox, ep.current.offset.vertical, textHeight)
 	//
 	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -248,8 +384,8 @@ func (ep *EditorPanel) Paint() error {
 	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
 	//
 	// HACK -- shouldn't need to remake each time
-	tline, _ := ep.lineBuffer.Expose()
-	ep.lineBuffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
+	tline := ep.command.where.Line
+	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
 	//
 	length := bounds.Max(line, len(content))
 	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
@@ -284,17 +420,24 @@ type TextBox struct {
 	screen.SubCanvas
 }
 
-var markStyle = screen.MakeStyle(termbox.ColorDefault, 12)
+var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
+
+var hereStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorBlack)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
-
-		// log.Println("range:", t.ep.firstMarkedLine, "to", t.ep.lastMarkedLine)
 		ep := t.ep
-		if ep.firstMarkedLine-1-ep.verticalOffset <= where.Line && where.Line <= ep.lastMarkedLine-1-ep.verticalOffset {
+
+		verticalOffset := ep.main.offset.vertical
+		if where.Line+verticalOffset == ep.main.where.Line {
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 2}, '+', hereStyle)
+		}
+
+		first, last := ep.main.marked.Range()
+		if first-verticalOffset <= where.Line && where.Line <= last-verticalOffset {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
 		}
-		s := fmt.Sprintf("%4v", where.Line+ep.verticalOffset)
+		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
 		for i, ch := range s {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
 		}
@@ -310,12 +453,12 @@ func (t *TextBox) SetCursor(where grid.LineCol) {
 }
 
 func (ep *EditorPanel) SetCursor() error {
-	if ep.focusBuffer == &ep.mainBuffer {
-		where := ep.mainBuffer.Where().LineMinus(ep.verticalOffset)
-		ep.textBox.SetCursor(where) // (where.ColPlus(delta))
+	if ep.current == &ep.main {
+		where := ep.current.where.LineMinus(ep.current.offset.vertical)
+		ep.textBox.SetCursor(where)
 	} else {
-		where := ep.lineBuffer.Where()                          // .LineMinus(ep.verticalOffset)
-		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta}) // (where)
+		where := ep.command.where
+		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
 	}
 	return nil
 }

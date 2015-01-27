@@ -2,6 +2,7 @@ package buffer
 
 import (
 	"bufio"
+	//	"errors"
 	"io"
 	"os"
 )
@@ -10,35 +11,37 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Type interface {
-	// Insert inserts the rune at the current position and moves right.
-	Insert(ch rune)
+	// Insert inserts the rune at the current position.
+	Insert(where grid.LineCol, ch rune)
+
+	// DeleteLine(n) deletes line n from the buffer
+	DeleteLine(where grid.LineCol) grid.LineCol
+
+	MoveLines(where grid.LineCol, firstLine, lastLine int)
+
+	DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol
+
 	// DeleteBack delete the previous rune if not at line start. Otherwise
 	// it does nothing.
-	DeleteBack()
+	DeleteBack(grid.LineCol) grid.LineCol
+
 	// DeleteForward delete the current rune if there are any runes
 	// remaining on the current line. Otherwise it does nothing.
-	DeleteForward()
-	// BackOne moves left one rune if not at line start. Otherwise
-	// it does nothing.
-	BackOne()
-	// UpOne moves up one line if not at first line, preserving the column.
-	UpOne()
-	// DownOne moves down one line, preserving the column.
-	DownOne()
-	// ForwardOne moves right one rune.
-	ForwardOne()
+	DeleteForward(grid.LineCol) grid.LineCol
+
 	// Return inserts a newline (and hence a new line) at the current position.
-	Return()
-	Execute() error
+	Return(grid.LineCol) grid.LineCol
+
+	Execute(grid.LineCol) (grid.LineCol, error)
+
 	PutLines(c screen.Canvas, first, n int)
-	// SetWhere sets the current position to be where.
-	SetWhere(where grid.LineCol)
-	// Where returns the current position
-	Where() grid.LineCol
+
 	// attempt to eliminate?
-	Expose() (line int, content []string)
+	Expose() []string
+
 	// ReadFromFile reads from r inserting the content at the current position.
-	ReadFromFile(fileName string, r io.Reader) error
+	ReadFromFile(where grid.LineCol, fileName string, r io.Reader) (grid.LineCol, error)
+
 	WriteToFile(fileName []string) error
 }
 
@@ -46,13 +49,64 @@ type Type interface {
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
 	content  []string                 // existing lines of text
-	where    grid.LineCol             // current location in buffer (line, column)
 	execute  func(Type, string) error // execute command on buffer at line
 	fileName string                   // file name used for most recent read
 }
 
-func (b *SimpleBuffer) Expose() (line int, content []string) {
-	return b.where.Line, b.content
+func (b *SimpleBuffer) Expose() (content []string) {
+	return b.content
+}
+
+func (b *SimpleBuffer) MoveLines(where grid.LineCol, firstLine, lastLine int) {
+	lines := b.content
+	target := where.Line
+	newContent := make([]string, 0, len(lines))
+
+	if target < firstLine {
+
+		newContent = append(newContent, lines[0:target+1]...)
+		newContent = append(newContent, lines[firstLine:lastLine+1]...)
+		newContent = append(newContent, lines[target+1:firstLine]...)
+		newContent = append(newContent, lines[lastLine+1:]...)
+
+	} else if target > lastLine {
+
+		newContent = append(newContent, lines[0:firstLine]...)
+		newContent = append(newContent, lines[lastLine+1:target+1]...)
+		newContent = append(newContent, lines[firstLine:lastLine+1]...)
+		newContent = append(newContent, lines[target+1:]...)
+
+	} else {
+		panic("target within range")
+	}
+
+	b.content = newContent
+}
+
+func (b *SimpleBuffer) DeleteLines(where grid.LineCol, lowLine, highLine int) grid.LineCol {
+	if 0 <= lowLine && lowLine <= highLine && highLine <= len(b.content) {
+		b.content = append(b.content[0:lowLine], b.content[highLine+1:]...)
+		if where.Line >= lowLine {
+			if where.Line <= highLine {
+				where.Line = lowLine
+			} else {
+				where.Line = where.Line - (highLine - lowLine + 1)
+			}
+		}
+	}
+	return where
+}
+
+func (b *SimpleBuffer) DeleteLine(where grid.LineCol) grid.LineCol {
+	line := where.Line
+	if line == 0 {
+		b.content = b.content[1:]
+	} else if line < len(b.content) {
+		b.content = append(b.content[0:line], b.content[line+1:]...)
+	} else {
+		// nothing to do -- deleting virtual line
+	}
+	return where
 }
 
 func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
@@ -78,19 +132,19 @@ func (b *SimpleBuffer) WriteToFile(fileNameOption []string) error {
 	return nil
 }
 
-func (b *SimpleBuffer) ReadFromFile(fileName string, r io.Reader) error {
+func (b *SimpleBuffer) ReadFromFile(where grid.LineCol, fileName string, r io.Reader) (grid.LineCol, error) {
 	scanner := bufio.NewScanner(r)
 	for scanner.Scan() {
 		line := scanner.Text()
 		b.content = append(b.content, line)
 	}
-	b.where.Line = 0
+	where.Line = 0
 	b.fileName = fileName
-	return nil
+	return where, nil
 }
 
-func (b *SimpleBuffer) makeRoom() {
-	line, col := b.where.Line, b.where.Col
+func (b *SimpleBuffer) makeRoom(where grid.LineCol) {
+	line, col := where.Line, where.Col
 	if line >= len(b.content) {
 		content := make([]string, line+1)
 		copy(content, b.content)
@@ -101,81 +155,69 @@ func (b *SimpleBuffer) makeRoom() {
 	}
 }
 
-func (b *SimpleBuffer) Insert(ch rune) {
+func (b *SimpleBuffer) Insert(where grid.LineCol, ch rune) {
 
-	b.makeRoom()
+	b.makeRoom(where)
 
-	loc := b.where.Col
-	runes := []rune(b.content[b.where.Line])
+	loc := where.Col
+	runes := []rune(b.content[where.Line])
 
 	A := []rune{}
 	B := append(A, runes[0:loc]...)
 	C := append(B, ch)
 	D := append(C, runes[loc:]...)
 
-	b.where.Col += 1
-	b.content[b.where.Line] = string(D)
+	b.content[where.Line] = string(D)
 }
 
-func (b *SimpleBuffer) Execute() error {
-	b.makeRoom()
-	return b.execute(b, b.content[b.where.Line])
+func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
+	b.makeRoom(where)
+	return where, b.execute(b, b.content[where.Line])
 }
 
-func (b *SimpleBuffer) Return() {
+func New(execute func(Type, string) error) Type {
+	return &SimpleBuffer{
+		content: []string{},
+		execute: execute,
+	}
+}
 
-	b.makeRoom()
+func (b *SimpleBuffer) Return(where grid.LineCol) grid.LineCol {
+
+	b.makeRoom(where)
 
 	lines := append(b.content, "")
 
-	line, col := b.where.Line, b.where.Col
+	line, col := where.Line, where.Col
 	right := lines[line][col:]
 	left := lines[line][0:col]
 
 	copy(lines[line+1:], lines[line:])
 	lines[line] = left
 	lines[line+1] = right
-	b.DownOne() // b.line += 1
-	b.where.Col = 0
+	where.DownOne()
+	where.Col = 0
 	b.content = lines
+	return where
 }
 
-func (b *SimpleBuffer) UpOne() {
-	if b.where.Line > 0 {
-		b.where.Line -= 1
-	}
-}
-
-func (b *SimpleBuffer) DownOne() {
-	b.where.Line += 1
-}
-
-func (b *SimpleBuffer) BackOne() {
-	if b.where.Col > 0 {
-		b.where.Col -= 1
-	}
-}
-
-func (b *SimpleBuffer) ForwardOne() {
-	b.where.Col += 1
-}
-
-func (b *SimpleBuffer) DeleteBack() {
-	b.makeRoom()
-	line, col := b.where.Line, b.where.Col
+func (b *SimpleBuffer) DeleteBack(where grid.LineCol) grid.LineCol {
+	b.makeRoom(where)
+	line, col := where.Line, where.Col
 	if col > 0 {
 		content := b.content[line]
 		before := content[0 : col-1]
 		after := content[col:]
 		newContent := before + after
 		b.content[line] = newContent
-		b.BackOne()
+		where.LeftOne()
 	}
+	return where
 }
 
-func (b *SimpleBuffer) DeleteForward() {
-	b.ForwardOne()
-	b.DeleteBack()
+func (b *SimpleBuffer) DeleteForward(where grid.LineCol) grid.LineCol {
+	where.RightOne()
+	return b.DeleteBack(where)
 }
 
 func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
@@ -184,20 +226,5 @@ func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	for line := first; line < len(content) && row < n; line += 1 {
 		screen.PutString(w, 0, row, content[line], screen.DefaultStyle)
 		row += 1
-	}
-}
-
-func (s *SimpleBuffer) Where() grid.LineCol {
-	return s.where
-}
-
-func (s *SimpleBuffer) SetWhere(where grid.LineCol) {
-	s.where = where
-}
-
-func New(execute func(Type, string) error) Type {
-	return &SimpleBuffer{
-		content: []string{},
-		execute: execute,
 	}
 }
