@@ -37,6 +37,9 @@ the colour 'yellow' is more of a mucky orange. need lots of colours.
 
 movement to/from command line, persistence of same
 
+move marked range should leave the range and the cursor
+somewheres sane.
+
 placement of cursor following horizontal movement
 
 search (plain; regexp)
@@ -47,9 +50,7 @@ display messages somewhere
 token highlighting
 menus
 
-
 write marked range(s)
-move marked range
 
 warning markers following analysis
 run code over buffer
@@ -101,4 +102,9 @@ delete current line should adjust the marked range
 Adding line breaks should widen the marked range unless above
 its end.
 	Done for RETURN (but not for newlines created by Read).
+
+move marked range
+	Done via a MoveLines operation of Buffer invoked
+	by ENTER mr RETURN. The target line	is not permitted to be 
+	within the range.
 

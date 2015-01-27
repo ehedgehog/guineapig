@@ -72,7 +72,7 @@ func (b *SimpleBuffer) MoveLines(where grid.LineCol, firstLine, lastLine int) {
 	} else if target > lastLine {
 
 		newContent = append(newContent, lines[0:firstLine]...)
-		newContent = append(newContent, lines[lastLine:target+1]...)
+		newContent = append(newContent, lines[lastLine+1:target+1]...)
 		newContent = append(newContent, lines[firstLine:lastLine+1]...)
 		newContent = append(newContent, lines[target+1:]...)
 
