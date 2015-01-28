@@ -68,6 +68,17 @@ func (mr *MarkedRange) SetHigh(lineNumber int) {
 	}
 }
 
+func (mr *MarkedRange) MoveAfter(target int) int {
+	first, last := mr.Range()
+	diff := last - first
+	if target > last {
+		target = target - (diff + 1)
+	}
+	mr.SetLow(target + 1)
+	mr.SetHigh(target + 1 + diff)
+	return target
+}
+
 func (mr *MarkedRange) Return(lineNumber int) {
 	if mr.IsActive() {
 		if lineNumber <= mr.lastMarkedLine {
@@ -136,6 +147,7 @@ var commands = map[string]func(*EditorPanel, []string) error{
 				return errors.New("range overlaps target")
 			}
 			b.MoveLines(ep.main.where, first, last)
+			ep.main.where.Line = ep.main.marked.MoveAfter(target)
 			return nil
 		} else {
 			return errors.New("no marked range")
@@ -362,7 +374,7 @@ func (ep *EditorPanel) Paint() error {
 	line := ep.current.where.Line
 	textBoxSize := ep.textBox.Size()
 	textHeight := textBoxSize.Height
-	ep.main.buffer.PutLines(ep.textBox, ep.current.offset.vertical, textHeight)
+	ep.main.buffer.PutLines(ep.textBox, ep.main.offset.vertical, textHeight)
 	//
 	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -422,15 +434,17 @@ type TextBox struct {
 
 var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
-var hereStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorBlack)
+var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 	if where.Col == 0 {
 		ep := t.ep
 
 		verticalOffset := ep.main.offset.vertical
+
+		numberStyle := screen.DefaultStyle
 		if where.Line+verticalOffset == ep.main.where.Line {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 2}, '+', hereStyle)
+			numberStyle = hereStyle
 		}
 
 		first, last := ep.main.marked.Range()
@@ -439,7 +453,7 @@ func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 		}
 		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
 		for i, ch := range s {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
+			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, numberStyle)
 		}
 		//	for i := 0; i < t.tagSize; i += 1 {
 		//		t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, '_', s)
