@@ -34,62 +34,6 @@ type EventHandler interface {
 	New() EventHandler
 }
 
-type MarkedRange struct {
-	firstMarkedLine int
-	lastMarkedLine  int
-}
-
-func (mr *MarkedRange) Range() (first, last int) {
-	if mr.firstMarkedLine == 0 {
-		return -1, -1
-	}
-	return mr.firstMarkedLine - 1, mr.lastMarkedLine - 1
-}
-
-func (mr *MarkedRange) Clear() {
-	mr.firstMarkedLine, mr.lastMarkedLine = 0, 0
-}
-
-func (mr *MarkedRange) IsActive() bool {
-	return mr.firstMarkedLine > 0
-}
-
-func (mr *MarkedRange) SetLow(lineNumber int) {
-	mr.firstMarkedLine = lineNumber + 1
-	if mr.lastMarkedLine < mr.firstMarkedLine {
-		mr.lastMarkedLine = mr.firstMarkedLine
-	}
-}
-
-func (mr *MarkedRange) SetHigh(lineNumber int) {
-	mr.lastMarkedLine = lineNumber + 1
-	if mr.firstMarkedLine > mr.lastMarkedLine {
-		mr.firstMarkedLine = mr.lastMarkedLine
-	}
-}
-
-func (mr *MarkedRange) MoveAfter(target int) int {
-	first, last := mr.Range()
-	diff := last - first
-	if target > last {
-		target = target - (diff + 1)
-	}
-	mr.SetLow(target + 1)
-	mr.SetHigh(target + 1 + diff)
-	return target
-}
-
-func (mr *MarkedRange) Return(lineNumber int) {
-	if mr.IsActive() {
-		if lineNumber <= mr.lastMarkedLine {
-			mr.lastMarkedLine += 1
-		}
-		if lineNumber < mr.firstMarkedLine {
-			mr.firstMarkedLine += 1
-		}
-	}
-}
-
 type Offset struct {
 	vertical   int
 	horizontal int
@@ -98,7 +42,7 @@ type Offset struct {
 type State struct {
 	where  grid.LineCol
 	buffer buffer.Type
-	marked MarkedRange
+	marked grid.MarkedRange
 	offset Offset
 }
 
@@ -159,17 +103,9 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	},
 	"d": func(ep *EditorPanel, blobs []string) error {
 		b := ep.main.buffer
-		lineNumber := ep.current.where.Line
-		b.DeleteLine(ep.current.where)
-		if ep.main.marked.IsActive() {
-			first, last := ep.main.marked.Range()
-			if lineNumber <= last {
-				ep.main.marked.lastMarkedLine -= 1
-				if lineNumber < first {
-					ep.main.marked.firstMarkedLine -= 1
-				}
-			}
-		}
+		lineNumber := ep.main.where.Line
+		b.DeleteLine(ep.main.where)
+		ep.main.marked.RemoveLine(lineNumber)
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
