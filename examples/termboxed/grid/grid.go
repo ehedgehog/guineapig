@@ -1,5 +1,12 @@
 package grid
 
+type Geometry struct {
+	MinWidth  int
+	MaxWidth  int
+	MinHeight int
+	MaxHeight int
+}
+
 // LineCol is a location on a canvas or like surface.
 type LineCol struct {
 	Line int
