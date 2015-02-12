@@ -106,7 +106,7 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	},
 }
 
-func NewEditorPanel() events.EventHandler {
+func NewEditorPanel() events.Handler {
 	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
@@ -129,7 +129,7 @@ func NewEditorPanel() events.EventHandler {
 	return ep
 }
 
-func (ep *EditorPanel) New() events.EventHandler {
+func (ep *EditorPanel) New() events.Handler {
 	return NewEditorPanel()
 }
 
@@ -428,7 +428,7 @@ func main() {
 	// edB := NewStack(NewEditorPanel, NewEditorPanel())
 	//	eh := NewSideBySide(edA, edB)
 
-	eh := layouts.NewShelf(func() events.EventHandler { return layouts.NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
+	eh := layouts.NewShelf(func() events.Handler { return layouts.NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
 
 	eh.ResizeTo(page)
 

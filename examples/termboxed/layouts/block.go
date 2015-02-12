@@ -4,8 +4,8 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 
 type Block struct {
-	generator  func() events.EventHandler
-	elements   []events.EventHandler
+	generator  func() events.Handler
+	elements   []events.Handler
 	bounds     []int
 	focus      int
 	recentSize screen.Canvas

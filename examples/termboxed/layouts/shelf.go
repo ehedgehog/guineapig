@@ -10,7 +10,7 @@ type Shelf struct {
 	Block
 }
 
-func NewShelf(generator func() events.EventHandler, elements ...events.EventHandler) events.EventHandler {
+func NewShelf(generator func() events.Handler, elements ...events.Handler) events.Handler {
 	return &Shelf{
 		Block: Block{
 			focus:     0,
@@ -21,7 +21,7 @@ func NewShelf(generator func() events.EventHandler, elements ...events.EventHand
 	}
 }
 
-func (s *Shelf) New() events.EventHandler {
+func (s *Shelf) New() events.Handler {
 	return NewShelf(s.generator)
 }
 

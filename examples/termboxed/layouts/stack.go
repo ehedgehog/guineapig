@@ -10,7 +10,7 @@ type Stack struct {
 	Block
 }
 
-func NewStack(generator func() events.EventHandler, elements ...events.EventHandler) events.EventHandler {
+func NewStack(generator func() events.Handler, elements ...events.Handler) events.Handler {
 	return &Stack{
 		Block: Block{
 			focus:     0,
@@ -21,7 +21,7 @@ func NewStack(generator func() events.EventHandler, elements ...events.EventHand
 	}
 }
 
-func (s *Stack) New() events.EventHandler {
+func (s *Stack) New() events.Handler {
 	return NewStack(s.generator)
 }
 

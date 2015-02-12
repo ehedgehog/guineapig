@@ -9,8 +9,8 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type SideBySide struct {
 	widthA int
-	Focus  events.EventHandler
-	A, B   events.EventHandler
+	Focus  events.Handler
+	A, B   events.Handler
 }
 
 func (s *SideBySide) Geometry() grid.Geometry {
@@ -68,10 +68,10 @@ func (s *SideBySide) SetCursor() error {
 	return s.Focus.SetCursor()
 }
 
-func NewSideBySide(A, B events.EventHandler) events.EventHandler {
+func NewSideBySide(A, B events.Handler) events.Handler {
 	return &SideBySide{0, A, A, B}
 }
 
-func (s *SideBySide) New() events.EventHandler {
+func (s *SideBySide) New() events.Handler {
 	panic("SideBySide.New")
 }
