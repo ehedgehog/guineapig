@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	// 	"log"
+	"log"
 	"os"
 	//	"strconv"
 	"strings"
@@ -32,15 +32,36 @@ type State struct {
 }
 
 type EditorPanel struct {
-	topBar    screen.Canvas
-	bottomBar screen.Canvas
-	leftBar   screen.Canvas
-	rightBar  screen.Canvas
-	textBox   screen.Canvas
+	topBar    *Panel
+	bottomBar *Panel
+	leftBar   *Panel
+	rightBar  *Panel
+	textBox   *Panel
 
 	current *State
 	main    State
 	command State
+}
+
+type Panel struct {
+	c     screen.Canvas
+	paint func(*Panel)
+}
+
+func (p *Panel) SetCursor(where grid.LineCol) {
+	p.c.SetCursor(where)
+}
+
+func (p *Panel) Size() grid.Size {
+	return p.c.Size()
+}
+
+func (p *Panel) Paint() {
+	if p.paint == nil {
+		log.Println("Paint -- no paint function provided.")
+	} else {
+		p.paint(p)
+	}
 }
 
 func (ep *EditorPanel) Geometry() grid.Geometry {
@@ -289,54 +310,90 @@ func (ep *EditorPanel) AdjustScrolling() {
 
 func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
-	bottomSize := ep.bottomBar.Size()
-	w := bottomSize.Width
-	content := ep.main.buffer.Expose()
-	line := ep.current.where.Line
-	textBoxSize := ep.textBox.Size()
-	textHeight := textBoxSize.Height
-	ep.main.buffer.PutLines(ep.textBox, ep.main.offset.vertical, textHeight)
-	//
-	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
-	for i := 1; i < w; i += 1 {
-		ep.bottomBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
-	}
-	ep.bottomBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
-	//
-	leftBarSize := ep.leftBar.Size()
-	lh := leftBarSize.Height
-	for j := 0; j < lh; j += 1 {
-		ep.leftBar.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
-	}
-	//
-	ep.topBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
-	for i := 1; i < w; i += 1 {
-		ep.topBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
-	}
-	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
-	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
-	//
-	// HACK -- shouldn't need to remake each time
-	tline := ep.command.where.Line
-	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
-	//
-	length := bounds.Max(line, len(content))
-	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
-	//
+	ep.topBar.Paint()
+	ep.bottomBar.Paint()
+	ep.leftBar.Paint()
+	ep.rightBar.Paint()
+	ep.textBox.Paint()
+	return nil
+}
+
+func (ep *EditorPanel) OldPaint() error {
+	//	bottomSize := ep.bottomBar.Size()
+	//	w := bottomSize.Width
+	//	content := ep.main.buffer.Expose()
+	//	line := ep.current.where.Line
+	//	textBoxSize := ep.textBox.Size()
+	//	textHeight := textBoxSize.Height
+	//	ep.main.buffer.PutLines(ep.textBox, ep.main.offset.vertical, textHeight)
+	//	//
+	//	ep.topBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
+	//	for i := 1; i < w; i += 1 {
+	//		ep.topBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
+	//	}
+	//	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
+	//	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
+	//	//
+	//	// HACK -- shouldn't need to remake each time
+	//	tline := ep.command.where.Line
+	//	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
+	//	//
 	return nil
 }
 
 const delta = 5
 
+func rightPainterFor(s *State) func(*Panel) {
+	return func(p *Panel) {
+		b := s.buffer
+		content := b.Expose()
+		line := s.where.Line
+		length := bounds.Max(line, len(content))
+		draw.Scrollbar(p.c, draw.ScrollInfo{length, line})
+	}
+}
+
+func bottomPainter(p *Panel) {
+	c := p.c
+	w := c.Size().Width
+	c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
+	for i := 1; i < w; i += 1 {
+		c.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
+	}
+	c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
+}
+
+func topPainterFor(s *State) func(*Panel) {
+	return func(p *Panel) {
+		c := p.c
+		w := c.Size().Width
+		c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
+		for i := 1; i < w; i += 1 {
+			c.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
+		}
+		screen.PutString(c, 2, 0, "─┤ ", screen.DefaultStyle)
+		c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
+		tline := s.where.Line
+		s.buffer.PutLines(screen.NewSubCanvas(c, delta, 0, w-delta-2, 1), tline, 1)
+	}
+}
+
+func leftPainter(p *Panel) {
+	c := p.c
+	h := c.Size().Height
+	for j := 0; j < h; j += 1 {
+		c.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
+	}
+}
+
 func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
-	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
-	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
-	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, 1)
-	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
-	// eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
-	eh.textBox = NewTextBox(eh, outer, 1, 1, w-2, h-2)
+	eh.leftBar = &Panel{c: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
+	eh.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&eh.main)}
+	eh.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&eh.command)}
+	eh.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
+	eh.textBox = &Panel{c: NewTextBox(eh, outer, 1, 1, w-2, h-2)}
 	return nil
 }
 
