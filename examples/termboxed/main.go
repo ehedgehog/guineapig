@@ -343,6 +343,14 @@ func (ep *EditorPanel) OldPaint() error {
 
 const delta = 5
 
+func textPainterFor(s *State) func(*Panel) {
+	return func(p *Panel) {
+		c := p.c
+		h := c.Size().Height
+		s.buffer.PutLines(c, s.offset.vertical, h)
+	}
+}
+
 func rightPainterFor(s *State) func(*Panel) {
 	return func(p *Panel) {
 		b := s.buffer
@@ -393,7 +401,7 @@ func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	eh.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&eh.main)}
 	eh.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&eh.command)}
 	eh.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
-	eh.textBox = &Panel{c: NewTextBox(eh, outer, 1, 1, w-2, h-2)}
+	eh.textBox = &Panel{c: NewTextBox(eh, outer, 1, 1, w-2, h-2), paint: textPainterFor(&eh.main)}
 	return nil
 }
 
