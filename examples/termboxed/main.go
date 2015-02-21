@@ -318,29 +318,6 @@ func (ep *EditorPanel) Paint() error {
 	return nil
 }
 
-func (ep *EditorPanel) OldPaint() error {
-	//	bottomSize := ep.bottomBar.Size()
-	//	w := bottomSize.Width
-	//	content := ep.main.buffer.Expose()
-	//	line := ep.current.where.Line
-	//	textBoxSize := ep.textBox.Size()
-	//	textHeight := textBoxSize.Height
-	//	ep.main.buffer.PutLines(ep.textBox, ep.main.offset.vertical, textHeight)
-	//	//
-	//	ep.topBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
-	//	for i := 1; i < w; i += 1 {
-	//		ep.topBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
-	//	}
-	//	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
-	//	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
-	//	//
-	//	// HACK -- shouldn't need to remake each time
-	//	tline := ep.command.where.Line
-	//	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
-	//	//
-	return nil
-}
-
 const delta = 5
 
 func textPainterFor(s *State) func(*Panel) {
