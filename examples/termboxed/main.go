@@ -12,7 +12,7 @@ import (
 import termbox "github.com/limetext/termbox-go"
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
-import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+import "github.com/ehedgehog/guineapig/examples/termboxed/text"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
@@ -26,7 +26,7 @@ type Offset struct {
 
 type State struct {
 	where  grid.LineCol
-	buffer buffer.Type
+	buffer text.Buffer
 	marked grid.MarkedRange
 	offset Offset
 }
@@ -72,7 +72,7 @@ func (ep *EditorPanel) Geometry() grid.Geometry {
 	return grid.Geometry{MinWidth: minw, MaxWidth: maxw, MinHeight: minh, MaxHeight: maxh}
 }
 
-func readIntoBuffer(ep *EditorPanel, b buffer.Type, fileName string) error {
+func readIntoBuffer(ep *EditorPanel, b text.Buffer, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -128,12 +128,12 @@ var commands = map[string]func(*EditorPanel, []string) error{
 }
 
 func NewEditorPanel() events.Handler {
-	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
+	mb := text.NewBuffer(func(b text.Buffer, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
 		main: State{buffer: mb},
 
-		command: State{buffer: buffer.New(func(b buffer.Type, s string) error {
+		command: State{buffer: text.NewBuffer(func(b text.Buffer, s string) error {
 			content := b.Expose()
 			line := ep.command.where.Line
 			blobs := strings.Split(content[line], " ")
@@ -267,7 +267,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 	return nil
 }
 
-func report(ep *EditorPanel, b buffer.Type, message string) {
+func report(ep *EditorPanel, b text.Buffer, message string) {
 	b.Insert(ep.current.where, ' ')
 	ep.current.where.RightOne()
 	b.Insert(ep.current.where, '(')

@@ -1,4 +1,4 @@
-package buffer
+package text
 
 import "testing"
 
@@ -11,9 +11,9 @@ func TestCanCreateBuffer(t *testing.T) {
 	eq(t, "should have no content", len(content), 0)
 }
 
-type Command func(Type)
+type Command func(Buffer)
 
-type Predicate func(Type)
+type Predicate func(Buffer)
 
 type Test struct {
 	commands []Command
@@ -23,10 +23,10 @@ type Test struct {
 func TestSequence(t *testing.T) {
 	seq := &Test{
 		[]Command{
-			Command(func(b Type) { b.ForwardOne() }),
-			Command(func(b Type) { b.(*SimpleBuffer).makeRoom() }),
+			Command(func(b Buffer) { b.ForwardOne() }),
+			Command(func(b Buffer) { b.(*SimpleBuffer).makeRoom() }),
 		},
-		func(b Type) {
+		func(b Buffer) {
 			col, line := b.Where()
 			eq(t, "should be at first line", line, 0)
 			eq(t, "should be one char along", col, 1)
@@ -57,7 +57,7 @@ func TestInsertCharacterInEmptyBuffer(t *testing.T) {
 	eq(t, "line should be '1'", content[0], "1")
 }
 
-func execFunction(b Type, args string) {
+func execFunction(b Buffer, args string) {
 	// nothing (yet)
 }
 
