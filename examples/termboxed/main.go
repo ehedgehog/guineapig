@@ -324,7 +324,17 @@ func textPainterFor(s *State) func(*Panel) {
 	return func(p *Panel) {
 		c := p.c
 		h := c.Size().Height
-		s.buffer.PutLines(c, s.offset.vertical, h)
+		v := s.offset.vertical
+		s.buffer.PutLines(c, v, h)
+
+		if s.marked.IsActive() {
+			first, last := s.marked.Range()
+			for line := first - v; line < last-v+1; line += 1 {
+				// the -1 is a hack. it will pass when we tidy up
+				// the canvases.
+				c.SetCell(grid.LineCol{line, -1}, ' ', markStyle)
+			}
+		}
 	}
 }
 
@@ -410,17 +420,10 @@ func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
 			numberStyle = hereStyle
 		}
 
-		first, last := ep.main.marked.Range()
-		if first-verticalOffset <= where.Line && where.Line <= last-verticalOffset {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
-		}
 		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
 		for i, ch := range s {
 			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, numberStyle)
 		}
-		//	for i := 0; i < t.tagSize; i += 1 {
-		//		t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, '_', s)
-		//	}
 	}
 	t.SubCanvas.SetCell(where.ColPlus(t.tagSize), ch, s)
 }
