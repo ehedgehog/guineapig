@@ -335,6 +335,15 @@ func textPainterFor(s *State) func(*Panel) {
 				c.SetCell(grid.LineCol{line, -1}, ' ', markStyle)
 			}
 		}
+
+		//		ln := 0
+		//		numberStyle := screen.DefaultStyle
+		//
+		//		for i := v; i < v+h; v += 1 {
+		//			s := fmt.Sprintf("%4v", i)
+		//			c.SetCell(grid.LineCol{ln, -3}, rune(s[0]), numberStyle)
+		//			ln += 1
+		//		}
 	}
 }
 
