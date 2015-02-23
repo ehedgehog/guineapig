@@ -22,10 +22,6 @@ TABS
 	to track other lines (or within lines)
 
 
-display range bar even on empty lines (currently display
-	is triggered when writing to the first rune of the line,
-	but if there is no first rune, there's no display.)
-
 the colour 'yellow' is more of a mucky orange. need lots of colours.      
 
 movement to/from command line, persistence of same
@@ -113,5 +109,9 @@ move marked range should leave the range and the cursor
 	or the old target minus the size of the range (for
 	forward moves).                                   
     
+display range bar even on empty lines (currently display
+	is triggered when writing to the first rune of the line,
+	but if there is no first rune, there's no display.)
+
 ;;; -- END ---------------------------------------------------
 

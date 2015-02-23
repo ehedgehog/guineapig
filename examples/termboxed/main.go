@@ -336,14 +336,16 @@ func textPainterFor(s *State) func(*Panel) {
 			}
 		}
 
-		//		ln := 0
-		//		numberStyle := screen.DefaultStyle
+		ln := 0
+		numberStyle := screen.DefaultStyle
 		//
-		//		for i := v; i < v+h; v += 1 {
-		//			s := fmt.Sprintf("%4v", i)
-		//			c.SetCell(grid.LineCol{ln, -3}, rune(s[0]), numberStyle)
-		//			ln += 1
-		//		}
+		for i := v; i < v+h; i += 1 {
+			s := fmt.Sprintf("%4v", i)
+			for j, ch := range s {
+				c.SetCell(grid.LineCol{ln, j - tryTagSize}, rune(ch), numberStyle)
+			}
+			ln += 1
+		}
 	}
 }
 
@@ -419,21 +421,6 @@ var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
 func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
-	if where.Col == 0 {
-		ep := t.ep
-
-		verticalOffset := ep.main.offset.vertical
-
-		numberStyle := screen.DefaultStyle
-		if where.Line+verticalOffset == ep.main.where.Line {
-			numberStyle = hereStyle
-		}
-
-		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
-		for i, ch := range s {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, numberStyle)
-		}
-	}
 	t.SubCanvas.SetCell(where.ColPlus(t.tagSize), ch, s)
 }
 
