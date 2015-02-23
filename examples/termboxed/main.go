@@ -392,11 +392,12 @@ func leftPainter(p *Panel) {
 func (ep *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
+
 	ep.leftBar = &Panel{c: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
 	ep.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
 	ep.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
 	ep.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
-	// ep.textBox = &Panel{c: NewTextBox(ep, outer, 1, 1, w-2, h-2), paint: textPainterFor(&ep.main)}
+
 	textBox := NewTextBox(ep, outer, 1, 1, w-2, h-2)
 	ep.textBox = &Panel{c: textBox, paint: textPainterFor(textBox, &ep.main)}
 	return nil
@@ -408,29 +409,22 @@ func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
 	gutter := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
 	page := screen.NewSubCanvas(sub, tryTagSize, 0, w-tryTagSize, h)
-	return &TextBox{gutter: gutter, page: page, tagSize: tryTagSize, ep: ep, SubCanvas: *sub.(*screen.SubCanvas)}
+	return &TextBox{gutter: gutter, page: page, Canvas: sub}
 }
 
 type TextBox struct {
-	tagSize int
-	ep      *EditorPanel
-
+	screen.Canvas
 	gutter screen.Canvas
 	page   screen.Canvas
-
-	screen.SubCanvas
 }
 
 var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
 var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
-func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
-	t.SubCanvas.SetCell(where.ColPlus(t.tagSize), ch, s)
-}
-
 func (t *TextBox) SetCursor(where grid.LineCol) {
-	t.SubCanvas.SetCursor(where.ColPlus(t.tagSize))
+	col := bounds.Max(0, where.Col-tryTagSize)
+	t.page.SetCursor(grid.LineCol{where.Line, col})
 }
 
 func (ep *EditorPanel) SetCursor() error {
