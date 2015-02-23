@@ -320,19 +320,16 @@ func (ep *EditorPanel) Paint() error {
 
 const delta = 5
 
-func textPainterFor(s *State) func(*Panel) {
+func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	return func(p *Panel) {
-		c := p.c
-		h := c.Size().Height
+		h := tb.gutter.Size().Height
 		v := s.offset.vertical
-		s.buffer.PutLines(c, v, h)
+		s.buffer.PutLines(tb.page, v, h)
 
 		if s.marked.IsActive() {
 			first, last := s.marked.Range()
 			for line := first - v; line < last-v+1; line += 1 {
-				// the -1 is a hack. it will pass when we tidy up
-				// the canvases.
-				c.SetCell(grid.LineCol{line, -1}, ' ', markStyle)
+				tb.gutter.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
 			}
 		}
 
@@ -342,7 +339,7 @@ func textPainterFor(s *State) func(*Panel) {
 		for i := v; i < v+h; i += 1 {
 			s := fmt.Sprintf("%4v", i)
 			for j, ch := range s {
-				c.SetCell(grid.LineCol{ln, j - tryTagSize}, rune(ch), numberStyle)
+				tb.gutter.SetCell(grid.LineCol{ln, j}, rune(ch), numberStyle)
 			}
 			ln += 1
 		}
@@ -392,27 +389,35 @@ func leftPainter(p *Panel) {
 	}
 }
 
-func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
+func (ep *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
-	eh.leftBar = &Panel{c: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
-	eh.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&eh.main)}
-	eh.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&eh.command)}
-	eh.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
-	eh.textBox = &Panel{c: NewTextBox(eh, outer, 1, 1, w-2, h-2), paint: textPainterFor(&eh.main)}
+	ep.leftBar = &Panel{c: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
+	ep.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
+	ep.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
+	ep.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
+	// ep.textBox = &Panel{c: NewTextBox(ep, outer, 1, 1, w-2, h-2), paint: textPainterFor(&ep.main)}
+	textBox := NewTextBox(ep, outer, 1, 1, w-2, h-2)
+	ep.textBox = &Panel{c: textBox, paint: textPainterFor(textBox, &ep.main)}
 	return nil
 }
 
 const tryTagSize = 6
 
-func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) screen.Canvas {
+func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox {
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
-	return &TextBox{tagSize: tryTagSize, ep: ep, SubCanvas: *sub.(*screen.SubCanvas)}
+	gutter := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
+	page := screen.NewSubCanvas(sub, tryTagSize, 0, w-tryTagSize, h)
+	return &TextBox{gutter: gutter, page: page, tagSize: tryTagSize, ep: ep, SubCanvas: *sub.(*screen.SubCanvas)}
 }
 
 type TextBox struct {
 	tagSize int
 	ep      *EditorPanel
+
+	gutter screen.Canvas
+	page   screen.Canvas
+
 	screen.SubCanvas
 }
 
