@@ -44,16 +44,16 @@ type EditorPanel struct {
 }
 
 type Panel struct {
-	c     screen.Canvas
-	paint func(*Panel)
+	canvas screen.Canvas
+	paint  func(*Panel)
 }
 
 func (p *Panel) SetCursor(where grid.LineCol) {
-	p.c.SetCursor(where)
+	p.canvas.SetCursor(where)
 }
 
 func (p *Panel) Size() grid.Size {
-	return p.c.Size()
+	return p.canvas.Size()
 }
 
 func (p *Panel) Paint() {
@@ -322,14 +322,14 @@ const delta = 5
 
 func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	return func(p *Panel) {
-		h := tb.gutter.Size().Height
+		h := tb.lineInfo.Size().Height
 		v := s.offset.vertical
-		s.buffer.PutLines(tb.page, v, h)
+		s.buffer.PutLines(tb.lineContent, v, h)
 
 		if s.marked.IsActive() {
 			first, last := s.marked.Range()
 			for line := first - v; line < last-v+1; line += 1 {
-				tb.gutter.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
+				tb.lineInfo.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
 			}
 		}
 
@@ -339,7 +339,7 @@ func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 		for i := v; i < v+h; i += 1 {
 			s := fmt.Sprintf("%4v", i)
 			for j, ch := range s {
-				tb.gutter.SetCell(grid.LineCol{ln, j}, rune(ch), numberStyle)
+				tb.lineInfo.SetCell(grid.LineCol{ln, j}, rune(ch), numberStyle)
 			}
 			ln += 1
 		}
@@ -352,12 +352,12 @@ func rightPainterFor(s *State) func(*Panel) {
 		content := b.Expose()
 		line := s.where.Line
 		length := bounds.Max(line, len(content))
-		draw.Scrollbar(p.c, draw.ScrollInfo{length, line})
+		draw.Scrollbar(p.canvas, draw.ScrollInfo{length, line})
 	}
 }
 
 func bottomPainter(p *Panel) {
-	c := p.c
+	c := p.canvas
 	w := c.Size().Width
 	c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -368,7 +368,7 @@ func bottomPainter(p *Panel) {
 
 func topPainterFor(s *State) func(*Panel) {
 	return func(p *Panel) {
-		c := p.c
+		c := p.canvas
 		w := c.Size().Width
 		c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
 		for i := 1; i < w; i += 1 {
@@ -382,7 +382,7 @@ func topPainterFor(s *State) func(*Panel) {
 }
 
 func leftPainter(p *Panel) {
-	c := p.c
+	c := p.canvas
 	h := c.Size().Height
 	for j := 0; j < h; j += 1 {
 		c.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
@@ -393,13 +393,13 @@ func (ep *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
 
-	ep.leftBar = &Panel{c: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
-	ep.rightBar = &Panel{c: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
-	ep.topBar = &Panel{c: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
-	ep.bottomBar = &Panel{c: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
+	ep.leftBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
+	ep.rightBar = &Panel{canvas: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
+	ep.topBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
+	ep.bottomBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
 
 	textBox := NewTextBox(ep, outer, 1, 1, w-2, h-2)
-	ep.textBox = &Panel{c: textBox, paint: textPainterFor(textBox, &ep.main)}
+	ep.textBox = &Panel{canvas: textBox, paint: textPainterFor(textBox, &ep.main)}
 	return nil
 }
 
@@ -407,15 +407,15 @@ const tryTagSize = 6
 
 func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox {
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
-	gutter := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
+	lineInfo := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
 	page := screen.NewSubCanvas(sub, tryTagSize, 0, w-tryTagSize, h)
-	return &TextBox{gutter: gutter, page: page, Canvas: sub}
+	return &TextBox{lineInfo: lineInfo, lineContent: page, Canvas: sub}
 }
 
 type TextBox struct {
 	screen.Canvas
-	gutter screen.Canvas
-	page   screen.Canvas
+	lineInfo    screen.Canvas
+	lineContent screen.Canvas
 }
 
 var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
@@ -424,7 +424,7 @@ var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
 func (t *TextBox) SetCursor(where grid.LineCol) {
 	col := bounds.Max(0, where.Col-tryTagSize)
-	t.page.SetCursor(grid.LineCol{where.Line, col})
+	t.lineContent.SetCursor(grid.LineCol{where.Line, col})
 }
 
 func (ep *EditorPanel) SetCursor() error {
