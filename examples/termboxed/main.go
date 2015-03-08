@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	// 	"log"
+	"log"
 	"os"
 	//	"strconv"
 	"strings"
@@ -12,72 +12,12 @@ import (
 import termbox "github.com/limetext/termbox-go"
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
-import "github.com/ehedgehog/guineapig/examples/termboxed/buffer"
+import "github.com/ehedgehog/guineapig/examples/termboxed/text"
 import "github.com/ehedgehog/guineapig/examples/termboxed/draw"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
-
-type Geometry struct {
-	minWidth  int
-	maxWidth  int
-	minHeight int
-	maxHeight int
-}
-
-type EventHandler interface {
-	Key(e *termbox.Event) error
-	Mouse(e *termbox.Event) error
-	ResizeTo(outer screen.Canvas) error
-	Paint() error
-	SetCursor() error
-	Geometry() Geometry
-	New() EventHandler
-}
-
-type MarkedRange struct {
-	firstMarkedLine int
-	lastMarkedLine  int
-}
-
-func (mr *MarkedRange) Range() (first, last int) {
-	if mr.firstMarkedLine == 0 {
-		return -1, -1
-	}
-	return mr.firstMarkedLine - 1, mr.lastMarkedLine - 1
-}
-
-func (mr *MarkedRange) Clear() {
-	mr.firstMarkedLine, mr.lastMarkedLine = 0, 0
-}
-
-func (mr *MarkedRange) IsActive() bool {
-	return mr.firstMarkedLine > 0
-}
-
-func (mr *MarkedRange) SetLow(lineNumber int) {
-	mr.firstMarkedLine = lineNumber + 1
-	if mr.lastMarkedLine < mr.firstMarkedLine {
-		mr.lastMarkedLine = mr.firstMarkedLine
-	}
-}
-
-func (mr *MarkedRange) SetHigh(lineNumber int) {
-	mr.lastMarkedLine = lineNumber + 1
-	if mr.firstMarkedLine > mr.lastMarkedLine {
-		mr.firstMarkedLine = mr.lastMarkedLine
-	}
-}
-
-func (mr *MarkedRange) Return(lineNumber int) {
-	if mr.IsActive() {
-		if lineNumber <= mr.lastMarkedLine {
-			mr.lastMarkedLine += 1
-		}
-		if lineNumber < mr.firstMarkedLine {
-			mr.firstMarkedLine += 1
-		}
-	}
-}
+import "github.com/ehedgehog/guineapig/examples/termboxed/layouts"
+import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 
 type Offset struct {
 	vertical   int
@@ -86,32 +26,53 @@ type Offset struct {
 
 type State struct {
 	where  grid.LineCol
-	buffer buffer.Type
-	marked MarkedRange
+	buffer text.Buffer
+	marked grid.MarkedRange
 	offset Offset
 }
 
 type EditorPanel struct {
-	topBar    screen.Canvas
-	bottomBar screen.Canvas
-	leftBar   screen.Canvas
-	rightBar  screen.Canvas
-	textBox   screen.Canvas
+	topBar    *Panel
+	bottomBar *Panel
+	leftBar   *Panel
+	rightBar  *Panel
+	textBox   *Panel
 
 	current *State
 	main    State
 	command State
 }
 
-func (ep *EditorPanel) Geometry() Geometry {
+type Panel struct {
+	canvas screen.Canvas
+	paint  func(*Panel)
+}
+
+func (p *Panel) SetCursor(where grid.LineCol) {
+	p.canvas.SetCursor(where)
+}
+
+func (p *Panel) Size() grid.Size {
+	return p.canvas.Size()
+}
+
+func (p *Panel) Paint() {
+	if p.paint == nil {
+		log.Println("Paint -- no paint function provided.")
+	} else {
+		p.paint(p)
+	}
+}
+
+func (ep *EditorPanel) Geometry() grid.Geometry {
 	minw := 2
 	maxw := 1000
 	minh := 2
 	maxh := 1000
-	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
+	return grid.Geometry{MinWidth: minw, MaxWidth: maxw, MinHeight: minh, MaxHeight: maxh}
 }
 
-func readIntoBuffer(ep *EditorPanel, b buffer.Type, fileName string) error {
+func readIntoBuffer(ep *EditorPanel, b text.Buffer, fileName string) error {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return err
@@ -136,6 +97,7 @@ var commands = map[string]func(*EditorPanel, []string) error{
 				return errors.New("range overlaps target")
 			}
 			b.MoveLines(ep.main.where, first, last)
+			ep.main.where.Line = ep.main.marked.MoveAfter(target)
 			return nil
 		} else {
 			return errors.New("no marked range")
@@ -147,17 +109,9 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	},
 	"d": func(ep *EditorPanel, blobs []string) error {
 		b := ep.main.buffer
-		lineNumber := ep.current.where.Line
-		b.DeleteLine(ep.current.where)
-		if ep.main.marked.IsActive() {
-			first, last := ep.main.marked.Range()
-			if lineNumber <= last {
-				ep.main.marked.lastMarkedLine -= 1
-				if lineNumber < first {
-					ep.main.marked.firstMarkedLine -= 1
-				}
-			}
-		}
+		lineNumber := ep.main.where.Line
+		b.DeleteLine(ep.main.where)
+		ep.main.marked.RemoveLine(lineNumber)
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
@@ -173,13 +127,13 @@ var commands = map[string]func(*EditorPanel, []string) error{
 	},
 }
 
-func NewEditorPanel() EventHandler {
-	mb := buffer.New(func(b buffer.Type, s string) error { return nil })
+func NewEditorPanel() events.Handler {
+	mb := text.NewBuffer(func(b text.Buffer, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
 		main: State{buffer: mb},
 
-		command: State{buffer: buffer.New(func(b buffer.Type, s string) error {
+		command: State{buffer: text.NewBuffer(func(b text.Buffer, s string) error {
 			content := b.Expose()
 			line := ep.command.where.Line
 			blobs := strings.Split(content[line], " ")
@@ -196,7 +150,7 @@ func NewEditorPanel() EventHandler {
 	return ep
 }
 
-func (ep *EditorPanel) New() EventHandler {
+func (ep *EditorPanel) New() events.Handler {
 	return NewEditorPanel()
 }
 
@@ -313,7 +267,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 	return nil
 }
 
-func report(ep *EditorPanel, b buffer.Type, message string) {
+func report(ep *EditorPanel, b text.Buffer, message string) {
 	b.Insert(ep.current.where, ' ')
 	ep.current.where.RightOne()
 	b.Insert(ep.current.where, '(')
@@ -356,100 +310,121 @@ func (ep *EditorPanel) AdjustScrolling() {
 
 func (ep *EditorPanel) Paint() error {
 	ep.AdjustScrolling()
-	bottomSize := ep.bottomBar.Size()
-	w := bottomSize.Width
-	content := ep.main.buffer.Expose()
-	line := ep.current.where.Line
-	textBoxSize := ep.textBox.Size()
-	textHeight := textBoxSize.Height
-	ep.main.buffer.PutLines(ep.textBox, ep.current.offset.vertical, textHeight)
-	//
-	ep.bottomBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
-	for i := 1; i < w; i += 1 {
-		ep.bottomBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
-	}
-	ep.bottomBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
-	//
-	leftBarSize := ep.leftBar.Size()
-	lh := leftBarSize.Height
-	for j := 0; j < lh; j += 1 {
-		ep.leftBar.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
-	}
-	//
-	ep.topBar.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
-	for i := 1; i < w; i += 1 {
-		ep.topBar.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
-	}
-	screen.PutString(ep.topBar, 2, 0, "─┤ ", screen.DefaultStyle)
-	ep.topBar.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
-	//
-	// HACK -- shouldn't need to remake each time
-	tline := ep.command.where.Line
-	ep.command.buffer.PutLines(screen.NewSubCanvas(ep.topBar, delta, 0, w-delta-2, 1), tline, 1)
-	//
-	length := bounds.Max(line, len(content))
-	draw.Scrollbar(ep.rightBar, draw.ScrollInfo{length, line})
-	//
+	ep.topBar.Paint()
+	ep.bottomBar.Paint()
+	ep.leftBar.Paint()
+	ep.rightBar.Paint()
+	ep.textBox.Paint()
 	return nil
 }
 
 const delta = 5
 
-func (eh *EditorPanel) ResizeTo(outer screen.Canvas) error {
+func textPainterFor(tb *TextBox, s *State) func(*Panel) {
+	return func(p *Panel) {
+		h := tb.lineInfo.Size().Height
+		v := s.offset.vertical
+		s.buffer.PutLines(tb.lineContent, v, h)
+
+		if s.marked.IsActive() {
+			first, last := s.marked.Range()
+			for line := first - v; line < last-v+1; line += 1 {
+				tb.lineInfo.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
+			}
+		}
+
+		ln := 0
+		numberStyle := screen.DefaultStyle
+		//
+		for i := v; i < v+h; i += 1 {
+			s := fmt.Sprintf("%4v", i)
+			for j, ch := range s {
+				tb.lineInfo.SetCell(grid.LineCol{ln, j}, rune(ch), numberStyle)
+			}
+			ln += 1
+		}
+	}
+}
+
+func rightPainterFor(s *State) func(*Panel) {
+	return func(p *Panel) {
+		b := s.buffer
+		content := b.Expose()
+		line := s.where.Line
+		length := bounds.Max(line, len(content))
+		draw.Scrollbar(p.canvas, draw.ScrollInfo{length, line})
+	}
+}
+
+func bottomPainter(p *Panel) {
+	c := p.canvas
+	w := c.Size().Width
+	c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
+	for i := 1; i < w; i += 1 {
+		c.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
+	}
+	c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
+}
+
+func topPainterFor(s *State) func(*Panel) {
+	return func(p *Panel) {
+		c := p.canvas
+		w := c.Size().Width
+		c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
+		for i := 1; i < w; i += 1 {
+			c.SetCell(grid.LineCol{Col: i, Line: 0}, draw.Glyph_hbar, screen.DefaultStyle)
+		}
+		screen.PutString(c, 2, 0, "─┤ ", screen.DefaultStyle)
+		c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
+		tline := s.where.Line
+		s.buffer.PutLines(screen.NewSubCanvas(c, delta, 0, w-delta-2, 1), tline, 1)
+	}
+}
+
+func leftPainter(p *Panel) {
+	c := p.canvas
+	h := c.Size().Height
+	for j := 0; j < h; j += 1 {
+		c.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
+	}
+}
+
+func (ep *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
-	eh.leftBar = screen.NewSubCanvas(outer, 0, 1, 1, h-2)
-	eh.rightBar = screen.NewSubCanvas(outer, w-1, 1, 1, h-2)
-	eh.topBar = screen.NewSubCanvas(outer, 0, 0, w, 1)
-	eh.bottomBar = screen.NewSubCanvas(outer, 0, h-1, w, 1)
-	// eh.textBox = screen.NewSubCanvas(outer, 1, 1, w-2, h-2)
-	eh.textBox = NewTextBox(eh, outer, 1, 1, w-2, h-2)
+
+	ep.leftBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
+	ep.rightBar = &Panel{canvas: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
+	ep.topBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
+	ep.bottomBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
+
+	textBox := NewTextBox(ep, outer, 1, 1, w-2, h-2)
+	ep.textBox = &Panel{canvas: textBox, paint: textPainterFor(textBox, &ep.main)}
 	return nil
 }
 
 const tryTagSize = 6
 
-func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) screen.Canvas {
+func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox {
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
-	return &TextBox{tagSize: tryTagSize, ep: ep, SubCanvas: *sub.(*screen.SubCanvas)}
+	lineInfo := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
+	page := screen.NewSubCanvas(sub, tryTagSize, 0, w-tryTagSize, h)
+	return &TextBox{lineInfo: lineInfo, lineContent: page, Canvas: sub}
 }
 
 type TextBox struct {
-	tagSize int
-	ep      *EditorPanel
-	screen.SubCanvas
+	screen.Canvas
+	lineInfo    screen.Canvas
+	lineContent screen.Canvas
 }
 
 var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 
-var hereStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorBlack)
-
-func (t *TextBox) SetCell(where grid.LineCol, ch rune, s screen.Style) {
-	if where.Col == 0 {
-		ep := t.ep
-
-		verticalOffset := ep.main.offset.vertical
-		if where.Line+verticalOffset == ep.main.where.Line {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 2}, '+', hereStyle)
-		}
-
-		first, last := ep.main.marked.Range()
-		if first-verticalOffset <= where.Line && where.Line <= last-verticalOffset {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, tryTagSize - 1}, ' ', markStyle)
-		}
-		s := fmt.Sprintf("%4v", where.Line+verticalOffset)
-		for i, ch := range s {
-			t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, ch, screen.DefaultStyle)
-		}
-		//	for i := 0; i < t.tagSize; i += 1 {
-		//		t.SubCanvas.SetCell(grid.LineCol{where.Line, i}, '_', s)
-		//	}
-	}
-	t.SubCanvas.SetCell(where.ColPlus(t.tagSize), ch, s)
-}
+var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
 func (t *TextBox) SetCursor(where grid.LineCol) {
-	t.SubCanvas.SetCursor(where.ColPlus(t.tagSize))
+	col := bounds.Max(0, where.Col-tryTagSize)
+	t.lineContent.SetCursor(grid.LineCol{where.Line, col})
 }
 
 func (ep *EditorPanel) SetCursor() error {
@@ -461,272 +436,6 @@ func (ep *EditorPanel) SetCursor() error {
 		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
 	}
 	return nil
-}
-
-type Block struct {
-	generator  func() EventHandler
-	elements   []EventHandler
-	bounds     []int
-	focus      int
-	recentSize screen.Canvas
-}
-
-type Stack struct {
-	Block
-}
-
-func (b *Block) SetCursor() error {
-	return b.elements[b.focus].SetCursor()
-}
-
-func (b *Block) Paint() error {
-	for _, e := range b.elements {
-		e.Paint()
-	}
-	return nil
-}
-
-func (b *Shelf) Key(e *termbox.Event) error {
-	if e.Ch == 0 && e.Key == termbox.KeyCtrlT {
-		b.elements = append(b.elements, b.generator())
-		b.bounds = append(b.bounds, 0)
-		b.ResizeTo(b.recentSize)
-		return nil
-	}
-	return b.elements[b.focus].Key(e)
-}
-
-func (b *Stack) Key(e *termbox.Event) error {
-	if e.Ch == 0 && e.Key == termbox.KeyCtrlU {
-		b.elements = append(b.elements, b.generator())
-		b.bounds = append(b.bounds, 0)
-		b.ResizeTo(b.recentSize)
-		return nil
-	}
-	return b.elements[b.focus].Key(e)
-}
-
-func NewStack(generator func() EventHandler, elements ...EventHandler) EventHandler {
-	return &Stack{
-		Block: Block{
-			focus:     0,
-			elements:  elements,
-			generator: generator,
-			bounds:    make([]int, len(elements)),
-		},
-	}
-}
-
-func (s *Stack) New() EventHandler {
-	return NewStack(s.generator)
-}
-
-func (s *Stack) Geometry() Geometry {
-	minw, maxw, minh, maxh := 0, 0, 0, 0
-	for _, eh := range s.elements {
-		g := eh.Geometry()
-		minw = bounds.Max(minw, g.minWidth)
-		maxw = bounds.Max(maxw, g.maxWidth)
-		minh = minh + g.minHeight
-		maxh = maxh + g.maxHeight
-	}
-	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
-}
-
-func (s *Stack) Mouse(e *termbox.Event) error {
-	y := 0
-	for i, h := range s.bounds {
-		nextY := y + h
-		if e.MouseY < nextY {
-			e.MouseY -= y
-			s.focus = i
-			return s.elements[i].Mouse(e)
-		}
-		y = nextY
-	}
-	panic("stack Mouse")
-}
-
-func (s *Stack) ResizeTo(outer screen.Canvas) error {
-	g := s.Geometry()
-	size := outer.Size()
-	w, h := size.Width, size.Height
-	count := 0
-	for _, eh := range s.elements {
-		g := eh.Geometry()
-		if g.minHeight != g.maxHeight {
-			count += 1
-		}
-	}
-	totalSpare := h - g.minHeight
-	spare := totalSpare / count
-	y := 0
-	for i, eh := range s.elements {
-		g := eh.Geometry()
-		if g.minHeight == g.maxHeight {
-			h := g.minHeight
-			s.bounds[i] = h
-			c := screen.NewSubCanvas(outer, 0, y, w, h)
-			eh.ResizeTo(c)
-			y += h
-		} else {
-			h := g.minHeight + spare
-			s.bounds[i] = h
-			c := screen.NewSubCanvas(outer, 0, y, w, h)
-			eh.ResizeTo(c)
-			y += h
-		}
-	}
-	s.recentSize = outer
-	return nil
-}
-
-type Shelf struct {
-	Block
-}
-
-func NewShelf(generator func() EventHandler, elements ...EventHandler) EventHandler {
-	return &Shelf{
-		Block: Block{
-			focus:     0,
-			elements:  elements,
-			generator: generator,
-			bounds:    make([]int, len(elements)),
-		},
-	}
-}
-
-func (s *Shelf) New() EventHandler {
-	return NewShelf(s.generator)
-}
-
-func (s *Shelf) Geometry() Geometry {
-	minw, maxw, minh, maxh := 0, 0, 0, 0
-	for _, eh := range s.elements {
-		g := eh.Geometry()
-		minh = bounds.Max(minh, g.minHeight)
-		maxh = bounds.Max(maxh, g.maxHeight)
-		minw = minw + g.minWidth
-		maxw = maxw + g.maxWidth
-	}
-	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
-}
-
-func (s *Shelf) Mouse(e *termbox.Event) error {
-	x := 0
-	for i, w := range s.bounds {
-		nextX := x + w
-		if e.MouseX < nextX {
-			e.MouseX -= x
-			s.focus = i
-			return s.elements[i].Mouse(e)
-		}
-		x = nextX
-	}
-	panic("shelf Mouse")
-}
-
-func (s *Shelf) ResizeTo(outer screen.Canvas) error {
-	g := s.Geometry()
-	size := outer.Size()
-	w, h := size.Width, size.Height
-	count := 0
-	for _, eh := range s.elements {
-		g := eh.Geometry()
-		if g.minWidth != g.maxWidth {
-			count += 1
-		}
-	}
-	totalSpare := w - g.minWidth
-	spare := totalSpare / count
-	x := 0
-	for i, eh := range s.elements {
-		g := eh.Geometry()
-		if g.minWidth == g.maxWidth {
-			w := g.minWidth
-			s.bounds[i] = w
-			c := screen.NewSubCanvas(outer, x, 0, w, h)
-			eh.ResizeTo(c)
-			x += w
-		} else {
-			w := g.minWidth + spare
-			s.bounds[i] = w
-			c := screen.NewSubCanvas(outer, x, 0, w, h)
-			eh.ResizeTo(c)
-			x += w
-		}
-	}
-	s.recentSize = outer
-	return nil
-}
-
-type SideBySide struct {
-	widthA int
-	Focus  EventHandler
-	A, B   EventHandler
-}
-
-func (s *SideBySide) Geometry() Geometry {
-	ga, gb := s.A.Geometry(), s.B.Geometry()
-	minw := ga.minWidth + gb.minWidth
-	maxw := ga.maxWidth + gb.maxWidth
-	minh := bounds.Max(ga.minHeight, gb.minHeight)
-	maxh := bounds.Max(ga.maxHeight, gb.maxHeight)
-	return Geometry{minWidth: minw, maxWidth: maxw, minHeight: minh, maxHeight: maxh}
-}
-
-func (s *SideBySide) Key(e *termbox.Event) error {
-	if e.Key == termbox.KeyCtrlA {
-		if s.Focus == s.A {
-			s.Focus = s.B
-		} else {
-			s.Focus = s.A
-		}
-	} else {
-		s.Focus.Key(e)
-	}
-	return nil
-}
-
-func (s *SideBySide) Mouse(e *termbox.Event) error {
-	x := e.MouseX
-	if x > s.widthA {
-		s.Focus = s.B
-		e.MouseX -= s.widthA
-	} else {
-		s.Focus = s.A
-	}
-	s.Focus.Mouse(e)
-	return nil
-}
-
-func (s *SideBySide) ResizeTo(outer screen.Canvas) error {
-	size := outer.Size()
-	w, h := size.Width, size.Height
-	aw := w / 2
-	bw := w - aw
-	s.widthA = aw
-	s.A.ResizeTo(screen.NewSubCanvas(outer, 0, 0, aw, h))
-	s.B.ResizeTo(screen.NewSubCanvas(outer, aw, 0, bw, h))
-	return nil
-}
-
-func (s *SideBySide) Paint() error {
-	s.A.Paint()
-	s.B.Paint()
-	return nil
-}
-
-func (s *SideBySide) SetCursor() error {
-	return s.Focus.SetCursor()
-}
-
-func NewSideBySide(A, B EventHandler) EventHandler {
-	return &SideBySide{0, A, A, B}
-}
-
-func (s *SideBySide) New() EventHandler {
-	panic("SideBySide.New")
 }
 
 func makeColours() []termbox.RGB {
@@ -755,11 +464,11 @@ func main() {
 
 	page := screen.NewTermboxCanvas()
 
-	edA := NewStack(NewEditorPanel, NewEditorPanel())
+	edA := layouts.NewStack(NewEditorPanel, NewEditorPanel())
 	// edB := NewStack(NewEditorPanel, NewEditorPanel())
 	//	eh := NewSideBySide(edA, edB)
 
-	eh := NewShelf(func() EventHandler { return NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
+	eh := layouts.NewShelf(func() events.Handler { return layouts.NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
 
 	eh.ResizeTo(page)
 

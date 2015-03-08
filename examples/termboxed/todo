@@ -1,8 +1,6 @@
-
-TODO
+;;; -- TODO ----------------------------------------------------
 
 buffer tests
-	buffer motion tests
 	buffer content tests
 	buffer reading tests
 	buffer writing tests
@@ -19,26 +17,14 @@ TABS
 	and compress on exit? That makes rather a lot of
 	assumptions.
 
-adjustments to marked range when newlines inserted/deleted.
 	make marks a property of the buffer, since it knows when
 	lines are removed/inserted, and in any case it will have
 	to track other lines (or within lines)
 
-make EditorPanel's have a Focus object which combines
-	a pointer to a LineCol cursor and a pointer to a Buffer.
-	Use this to replace focusBuffer and include the cursor
-	in the focus.
-
-display range bar even on empty lines (currently display
-	is triggered when writing to the first rune of the line,
-	but if there is no first rune, there's no display.)
 
 the colour 'yellow' is more of a mucky orange. need lots of colours.      
 
 movement to/from command line, persistence of same
-
-move marked range should leave the range and the cursor
-somewheres sane.
 
 placement of cursor following horizontal movement
 
@@ -63,9 +49,10 @@ distinguish word commands (eg "ls") and character commands (eg "/")
 edit command language ([if|then|else], (while|do), this;that, (...)) ...
 undo/redo
 
-DONE
+;;; -- DONE ------------------------------------------------------------
 
 placement of cursor following vertical scrolling
+
 read from file into current buffer at cursor.
 
 mark text ranges
@@ -83,7 +70,7 @@ page up/down movement
 	otherwise it skips forward a full page.
 
 line beginning/end movement
-	end moves to the beginning of the line unless it's already
+	end moves to the begining of the line unless it's already
 	there, in which case it moves to the end.
 
 delete current line
@@ -101,12 +88,32 @@ delete current line should adjust the marked range
 	otherwise reduce each marked line if deleted line
 	was same or lower than it.
 
-Adding line breaks should widen the marked range unless above
-its end.
-	Done for RETURN (but not for newlines created by Read).
+Adding line breaks should widen the marked range unless above 
+	its end. Done for RETURN (but not for newlines created by Read).
 
 move marked range
 	Done via a MoveLines operation of Buffer invoked
 	by ENTER mr RETURN. The target line	is not permitted to be 
 	within the range.
+
+adjustments to marked range when newlines inserted/deleted.
+	Currently specialsed tho ranges and done by the EditorPanel
+	rather than delegated to some smart LineCol manager.
+
+make EditorPanel's have a Focus object which combines
+	a pointer to a LineCol cursor and a pointer to a Buffer.
+	Use this to replace focusBuffer and include the cursor
+	in the focus.       
+ 
+move marked range should leave the range and the cursor
+	somewheres sane. The new range follows the new target;
+	the new target is the old target (for backward moves)
+	or the old target minus the size of the range (for
+	forward moves).                                   
+    
+display range bar even on empty lines (currently display
+	is triggered when writing to the first rune of the line,
+	but if there is no first rune, there's no display.)
+
+;;; -- END ---------------------------------------------------
 

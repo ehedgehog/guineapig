@@ -1,4 +1,4 @@
-package buffer
+package text
 
 import (
 	"bufio"
@@ -10,7 +10,7 @@ import (
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
-type Type interface {
+type Buffer interface {
 	// Insert inserts the rune at the current position.
 	Insert(where grid.LineCol, ch rune)
 
@@ -48,9 +48,9 @@ type Type interface {
 // SimpleBuffer is a simplistic implementation of
 // Buffer. It burns store like it was November 5th.
 type SimpleBuffer struct {
-	content  []string                 // existing lines of text
-	execute  func(Type, string) error // execute command on buffer at line
-	fileName string                   // file name used for most recent read
+	content  []string                   // existing lines of text
+	execute  func(Buffer, string) error // execute command on buffer at line
+	fileName string                     // file name used for most recent read
 }
 
 func (b *SimpleBuffer) Expose() (content []string) {
@@ -175,7 +175,7 @@ func (b *SimpleBuffer) Execute(where grid.LineCol) (grid.LineCol, error) {
 	return where, b.execute(b, b.content[where.Line])
 }
 
-func New(execute func(Type, string) error) Type {
+func NewBuffer(execute func(Buffer, string) error) Buffer {
 	return &SimpleBuffer{
 		content: []string{},
 		execute: execute,
