@@ -423,14 +423,17 @@ var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
 var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
 
 func (t *TextBox) SetCursor(where grid.LineCol) {
-	col := bounds.Max(0, where.Col-tryTagSize)
-	t.lineContent.SetCursor(grid.LineCol{where.Line, col})
+	// log.Println("TextBox.SetCursor(", where, ")")
+	if where.Col >= tryTagSize {
+		t.lineContent.SetCursor(where.ColMinus(tryTagSize))
+	}
 }
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
-		where := ep.current.where.LineMinus(ep.current.offset.vertical)
-		ep.textBox.SetCursor(where)
+		// log.Println("EditorPanel.SetCursor; offsets =", ep.current.offset)
+		// log.Println("EditorPanel.SetCursor; where   =", ep.current.where)
+		ep.textBox.SetCursor(ep.current.where.LineMinus(ep.current.offset.vertical))
 	} else {
 		where := ep.command.where
 		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
@@ -476,17 +479,22 @@ func main() {
 		eh.Paint()
 		eh.SetCursor()
 		termbox.Flush()
+
 		ev := termbox.PollEvent()
 		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
 			return
 		}
+
 		termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
+
 		if ev.Type == termbox.EventMouse {
 			eh.Mouse(&ev)
 		}
+
 		if ev.Type == termbox.EventKey {
 			eh.Key(&ev)
 		}
+
 		if ev.Type == termbox.EventResize {
 			page = screen.NewTermboxCanvas()
 			eh.ResizeTo(page)
