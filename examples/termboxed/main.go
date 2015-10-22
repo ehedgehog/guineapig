@@ -423,8 +423,8 @@ var markStyle = screen.DefaultStyle.Background(tcell.ColorYellow)
 var hereStyle = screen.DefaultStyle.Foreground(tcell.ColorRed)
 
 func (t *TextBox) SetCursor(where grid.LineCol) {
-	col := bounds.Max(0, where.Col-tryTagSize)
-	t.lineContent.SetCursor(grid.LineCol{where.Line, col})
+	// col := bounds.Max(0, where.Col-tryTagSize)
+	t.lineContent.SetCursor(grid.LineCol{where.Line, where.Col})
 }
 
 func (ep *EditorPanel) SetCursor() error {
