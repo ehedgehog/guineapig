@@ -458,6 +458,7 @@ func main() {
 	eh := layouts.NewShelf(func() events.Handler { return layouts.NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
 
 	eh.ResizeTo(page)
+	screen.TheScreen.EnableMouse()
 
 	for {
 		screen.TheScreen.Clear()
