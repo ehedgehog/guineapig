@@ -1,12 +1,12 @@
 package events
 
-import termbox "github.com/limetext/termbox-go"
+import "github.com/gdamore/tcell"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 
 type Handler interface {
-	Key(e *termbox.Event) error
-	Mouse(e *termbox.Event) error
+	Key(e *tcell.EventKey) error
+	Mouse(e *tcell.EventMouse) error
 	ResizeTo(outer screen.Canvas) error
 	Paint() error
 	SetCursor() error

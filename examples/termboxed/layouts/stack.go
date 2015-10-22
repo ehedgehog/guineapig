@@ -1,7 +1,7 @@
 package layouts
 
+import "github.com/gdamore/tcell"
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
-import "github.com/limetext/termbox-go"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
@@ -37,8 +37,8 @@ func (s *Stack) Geometry() grid.Geometry {
 	return grid.Geometry{MinWidth: minw, MaxWidth: maxw, MinHeight: minh, MaxHeight: maxh}
 }
 
-func (b *Stack) Key(e *termbox.Event) error {
-	if e.Ch == 0 && e.Key == termbox.KeyCtrlU {
+func (b *Stack) Key(e *tcell.EventKey) error {
+	if e.Key() == tcell.KeyCtrlU {
 		b.elements = append(b.elements, b.generator())
 		b.bounds = append(b.bounds, 0)
 		b.ResizeTo(b.recentSize)
@@ -47,14 +47,15 @@ func (b *Stack) Key(e *termbox.Event) error {
 	return b.elements[b.focus].Key(e)
 }
 
-func (s *Stack) Mouse(e *termbox.Event) error {
+func (s *Stack) Mouse(e *tcell.EventMouse) error {
 	y := 0
 	for i, h := range s.bounds {
 		nextY := y + h
-		if e.MouseY < nextY {
-			e.MouseY -= y
+		mx, my := e.Position()
+		if my < nextY {
+			my -= y
 			s.focus = i
-			return s.elements[i].Mouse(e)
+			return s.elements[i].Mouse(tcell.NewEventMouse(mx, my, e.Buttons(), e.Modifiers()))
 		}
 		y = nextY
 	}
