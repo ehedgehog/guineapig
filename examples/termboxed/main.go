@@ -156,7 +156,7 @@ func (ep *EditorPanel) New() events.Handler {
 
 func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 	b := ep.current.buffer
-	if true /* e.Ch == 0 */ {
+	if e.Key() != tcell.KeyRune  {
 		switch e.Key() {
 
 		case 0:
@@ -460,19 +460,17 @@ func main() {
 	eh.ResizeTo(page)
 
 	for {
+		screen.TheScreen.Clear()
 		eh.Paint()
 		eh.SetCursor()
 		screen.TheScreen.Show()
 		ev := screen.TheScreen.PollEvent()
 
-		fmt.Println("ev", ev)
-
-		screen.TheScreen.Clear()
-
 		switch ev := ev.(type) {
-		case *tcell.EventMouse:	eh.Mouse(ev)
+		case *tcell.EventMouse:	
+			eh.Mouse(ev)
 		case *tcell.EventKey: eh.Key(ev)
-		if ev.Key() ==  tcell.KeyCtrlX { return }
+			if ev.Key() ==  tcell.KeyCtrlX { return }
 		case *tcell.EventResize: 
 			page = screen.NewTermboxCanvas()
 			eh.ResizeTo(page)
