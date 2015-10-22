@@ -469,7 +469,7 @@ func main() {
 
 		switch ev := ev.(type) {
 		case *tcell.EventMouse:	
-			eh.Mouse(ev)
+			if ev.Buttons() > 0 { eh.Mouse(ev) }
 		case *tcell.EventKey: eh.Key(ev)
 			if ev.Key() ==  tcell.KeyCtrlX { return }
 		case *tcell.EventResize: 
