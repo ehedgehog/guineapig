@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-import termbox "github.com/limetext/termbox-go"
+import "github.com/gdamore/tcell"
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 import "github.com/ehedgehog/guineapig/examples/termboxed/text"
@@ -154,46 +154,46 @@ func (ep *EditorPanel) New() events.Handler {
 	return NewEditorPanel()
 }
 
-func (ep *EditorPanel) Key(e *termbox.Event) error {
+func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 	b := ep.current.buffer
-	if e.Ch == 0 {
-		switch e.Key {
+	if e.Key() != tcell.KeyRune {
+		switch e.Key() {
 
 		case 0:
 			// nothing
 
-		case termbox.KeyF1:
+		case tcell.KeyF1:
 			ep.current = &ep.command
 			ep.command.buffer.Return(ep.command.where)
 			ep.current.where = grid.LineCol{Line: ep.command.where.Line + 1, Col: 0}
 
-		case termbox.KeyF2:
+		case tcell.KeyF2:
 			ep.command.where, _ = ep.command.buffer.Execute(ep.command.where)
 
-		case termbox.KeyCtrlB:
+		case tcell.KeyCtrlB:
 			if ep.current == &ep.main {
 				ep.current = &ep.command
 			} else {
 				ep.current = &ep.main
 			}
 
-		case termbox.KeySpace:
+		case tcell.KeySpace:
 			b.Insert(ep.current.where, ' ')
 			ep.current.where.RightOne()
 
-		case termbox.KeyBackspace2:
+		case tcell.KeyBackspace2:
 			ep.current.where = b.DeleteBack(ep.current.where)
 
-		case termbox.KeyDelete:
+		case tcell.KeyDelete:
 			ep.current.where = b.DeleteForward(ep.current.where)
 
-		case termbox.KeyF3:
+		case tcell.KeyF3:
 			ep.main.marked.SetLow(ep.main.where.Line)
 
-		case termbox.KeyF4:
+		case tcell.KeyF4:
 			ep.main.marked.SetHigh(ep.main.where.Line)
 
-		case termbox.KeyPgup:
+		case tcell.KeyPgUp:
 			where := ep.current.where
 			vo := ep.current.offset.vertical
 			if where.Line-vo == 0 {
@@ -203,7 +203,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				ep.current.where = grid.LineCol{vo, where.Col}
 			}
 
-		case termbox.KeyPgdn:
+		case tcell.KeyPgDn:
 			where := ep.current.where
 			vo := ep.current.offset.vertical
 			height := ep.textBox.Size().Height
@@ -216,7 +216,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				ep.current.where = grid.LineCol{vo + height - 1, where.Col}
 			}
 
-		case termbox.KeyEnd:
+		case tcell.KeyEnd:
 			where := ep.current.where
 			if where.Col == 0 {
 				contents := b.Expose()
@@ -227,7 +227,7 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 			}
 			ep.current.where = where
 
-		case termbox.KeyEnter:
+		case tcell.KeyEnter:
 			if ep.current == &ep.main {
 				ep.current.where = b.Return(ep.current.where)
 				ep.main.marked.Return(ep.current.where.Line)
@@ -241,27 +241,27 @@ func (ep *EditorPanel) Key(e *termbox.Event) error {
 				ep.current = &ep.main
 			}
 
-		case termbox.KeyArrowRight:
+		case tcell.KeyRight:
 			ep.current.where.RightOne()
 
-		case termbox.KeyArrowUp:
+		case tcell.KeyUp:
 			ep.current.where.UpOne()
 
-		case termbox.KeyArrowDown:
+		case tcell.KeyDown:
 			ep.current.where.DownOne()
 
-		case termbox.KeyArrowLeft:
+		case tcell.KeyLeft:
 			ep.current.where.LeftOne()
 
 		default:
-			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key))
+			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key()))
 			for _, ch := range report {
 				b.Insert(ep.current.where, rune(ch))
 				ep.current.where.RightOne()
 			}
 		}
 	} else {
-		b.Insert(ep.current.where, e.Ch)
+		b.Insert(ep.current.where, e.Rune())
 		ep.current.where.RightOne()
 	}
 	return nil
@@ -282,8 +282,8 @@ func report(ep *EditorPanel, b text.Buffer, message string) {
 	ep.current.where.RightOne()
 }
 
-func (ep *EditorPanel) Mouse(e *termbox.Event) error {
-	x, y := e.MouseX, e.MouseY
+func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
+	x, y := e.Position()
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
@@ -418,15 +418,13 @@ type TextBox struct {
 	lineContent screen.Canvas
 }
 
-var markStyle = screen.MakeStyle(termbox.ColorDefault, termbox.ColorYellow)
+var markStyle = screen.DefaultStyle.Background(tcell.ColorYellow)
 
-var hereStyle = screen.MakeStyle(termbox.ColorRed, termbox.ColorDefault)
+var hereStyle = screen.DefaultStyle.Foreground(tcell.ColorRed)
 
 func (t *TextBox) SetCursor(where grid.LineCol) {
-	// log.Println("TextBox.SetCursor(", where, ")")
-	if where.Col >= tryTagSize {
-		t.lineContent.SetCursor(where.ColMinus(tryTagSize))
-	}
+	// col := bounds.Max(0, where.Col-tryTagSize)
+	t.lineContent.SetCursor(grid.LineCol{where.Line, where.Col})
 }
 
 func (ep *EditorPanel) SetCursor() error {
@@ -441,29 +439,16 @@ func (ep *EditorPanel) SetCursor() error {
 	return nil
 }
 
-func makeColours() []termbox.RGB {
-	result := termbox.Palette256 // make([]termbox.RGB, 256)
-	result[termbox.ColorBlack] = termbox.RGB{0, 0, 0}
-	result[termbox.ColorRed] = termbox.RGB{255, 0, 0}
-	result[termbox.ColorGreen] = termbox.RGB{0, 255, 0}
-	result[termbox.ColorYellow] = termbox.RGB{255, 255, 0}
-	result[termbox.ColorBlue] = termbox.RGB{0, 0, 255}
-	result[termbox.ColorMagenta] = termbox.RGB{255, 0, 255}
-	result[termbox.ColorCyan] = termbox.RGB{0, 255, 255}
-	result[termbox.ColorWhite] = termbox.RGB{255, 255, 255}
-	return result
-}
-
 func main() {
-	err := termbox.Init()
+	err := screen.TheScreen.Init()
 	if err != nil {
 		panic(err)
 	}
-	defer termbox.Close()
+	defer screen.TheScreen.Fini()
 
-	termbox.SetColorMode(termbox.ColorMode256)
-	termbox.SetColorPalette(makeColours())
-	termbox.SetInputMode(termbox.InputEsc | termbox.InputMouse)
+	// tcell.SetColorMode(tcell.ColorMode256)
+	// tcell.SetColorPalette(makeColours())
+	// tcell.SetInputMode(tcell.InputEsc | tcell.InputMouse)
 
 	page := screen.NewTermboxCanvas()
 
@@ -474,28 +459,26 @@ func main() {
 	eh := layouts.NewShelf(func() events.Handler { return layouts.NewStack(NewEditorPanel, NewEditorPanel()) }, edA)
 
 	eh.ResizeTo(page)
+	screen.TheScreen.EnableMouse()
 
 	for {
+		screen.TheScreen.Clear()
 		eh.Paint()
 		eh.SetCursor()
-		termbox.Flush()
+		screen.TheScreen.Show()
+		ev := screen.TheScreen.PollEvent()
 
-		ev := termbox.PollEvent()
-		if ev.Type == termbox.EventKey && ev.Key == termbox.KeyCtrlX {
-			return
-		}
-
-		termbox.Clear(termbox.ColorDefault, termbox.ColorDefault)
-
-		if ev.Type == termbox.EventMouse {
-			eh.Mouse(&ev)
-		}
-
-		if ev.Type == termbox.EventKey {
-			eh.Key(&ev)
-		}
-
-		if ev.Type == termbox.EventResize {
+		switch ev := ev.(type) {
+		case *tcell.EventMouse:
+			if ev.Buttons() > 0 {
+				eh.Mouse(ev)
+			}
+		case *tcell.EventKey:
+			eh.Key(ev)
+			if ev.Key() == tcell.KeyCtrlX {
+				return
+			}
+		case *tcell.EventResize:
 			page = screen.NewTermboxCanvas()
 			eh.ResizeTo(page)
 		}

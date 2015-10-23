@@ -1,6 +1,6 @@
 package main
 
-import termbox "github.com/limetext/termbox-go"
+import "github.com/gdamore/tcell"
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/bounds"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
@@ -22,8 +22,8 @@ func (s *SideBySide) Geometry() grid.Geometry {
 	return grid.Geometry{MinWidth: minw, MaxWidth: maxw, MinHeight: minh, MaxHeight: maxh}
 }
 
-func (s *SideBySide) Key(e *termbox.Event) error {
-	if e.Key == termbox.KeyCtrlA {
+func (s *SideBySide) Key(e *tcell.EventKey) error {
+	if e.Key() == tcell.KeyCtrlA {
 		if s.Focus == s.A {
 			s.Focus = s.B
 		} else {
@@ -35,11 +35,12 @@ func (s *SideBySide) Key(e *termbox.Event) error {
 	return nil
 }
 
-func (s *SideBySide) Mouse(e *termbox.Event) error {
-	x := e.MouseX
+func (s *SideBySide) Mouse(e *tcell.EventMouse) error {
+	x, y := e.Position()
+	_ = y
 	if x > s.widthA {
 		s.Focus = s.B
-		e.MouseX -= s.widthA
+		x -= s.widthA
 	} else {
 		s.Focus = s.A
 	}

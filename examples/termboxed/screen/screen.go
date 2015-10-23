@@ -2,59 +2,38 @@ package screen
 
 import (
 	"github.com/ehedgehog/guineapig/examples/termboxed/grid"
-	"github.com/limetext/termbox-go"
+	"github.com/gdamore/tcell"
 )
 
 ////////////////////////////////////////////////////////////////
 
 type Canvas interface {
 	Size() grid.Size
-	SetCell(where grid.LineCol, ch rune, s Style)
+	SetCell(where grid.LineCol, ch rune, s tcell.Style)
 	SetCursor(where grid.LineCol)
 }
 
-type Style interface {
-	Foreground() termbox.Attribute
-	Background() termbox.Attribute
-}
+var DefaultStyle tcell.Style
 
-type StyleStruct struct {
-	fg, bg termbox.Attribute
-}
+var StyleBackCyan = DefaultStyle.Background(tcell.ColorCyan)
 
-func (ss *StyleStruct) Foreground() termbox.Attribute {
-	return ss.fg
-}
+var StyleBackYellow = DefaultStyle.Background(tcell.ColorCyan)
 
-func (ss *StyleStruct) Background() termbox.Attribute {
-	return ss.bg
-}
-
-func MakeStyle(fg, bg termbox.Attribute) *StyleStruct {
-	return &StyleStruct{fg, bg}
-}
-
-var DefaultStyle = &StyleStruct{termbox.ColorDefault, termbox.ColorDefault}
-
-var StyleBackCyan = &StyleStruct{termbox.ColorDefault, termbox.ColorCyan}
-
-var StyleBackYellow = &StyleStruct{termbox.ColorDefault, termbox.ColorYellow}
-
-func PutString(c Canvas, x, y int, content string, s Style) {
+func PutString(c Canvas, x, y int, content string, s tcell.Style) {
 	i := 0
 	size := c.Size()
 	w := size.Width
 	limit := w - x
-	sprime := *s.(*StyleStruct)
+	// sprime := *s.(*StyleStruct)
 	for _, ch := range content {
 		if i > limit {
 			break
 		}
 		// sprime.fg += 1
 		scurrent := s
-		if i&1 == 0 {
-			scurrent = &sprime
-		}
+//		if i&1 == 0 {
+//			scurrent = &sprime
+//		}
 		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, scurrent)
 		i += 1
 	}
@@ -66,8 +45,14 @@ type TermboxCanvas struct {
 	size grid.Size
 }
 
+var TheScreen tcell.Screen
+
+func init() {
+	TheScreen, _ = tcell.NewScreen()
+}
+
 func NewTermboxCanvas() *TermboxCanvas {
-	w, h := termbox.Size()
+	w, h := TheScreen.Size()
 	return &TermboxCanvas{grid.Size{Width: w, Height: h}}
 }
 
@@ -76,11 +61,11 @@ func (t *TermboxCanvas) Size() grid.Size {
 }
 
 func (t *TermboxCanvas) SetCursor(where grid.LineCol) {
-	termbox.SetCursor(where.Col, where.Line)
+	TheScreen.ShowCursor(where.Col, where.Line)
 }
 
-func (t *TermboxCanvas) SetCell(where grid.LineCol, glyph rune, s Style) {
-	termbox.SetCell(where.Col, where.Line, glyph, s.Foreground(), s.Background())
+func (t *TermboxCanvas) SetCell(where grid.LineCol, glyph rune, s tcell.Style) {
+	TheScreen.SetContent(where.Col, where.Line, glyph, []rune{}, s)
 }
 
 ///////////////////////////////////////////////////////////////
@@ -99,7 +84,7 @@ func (s *SubCanvas) SetCursor(where grid.LineCol) {
 	s.outer.SetCursor(where.Plus(s.offset))
 }
 
-func (s *SubCanvas) SetCell(where grid.LineCol, glyph rune, st Style) {
+func (s *SubCanvas) SetCell(where grid.LineCol, glyph rune, st tcell.Style) {
 	s.outer.SetCell(where.Plus(s.offset), glyph, st)
 }
 
