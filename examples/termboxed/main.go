@@ -156,7 +156,7 @@ func (ep *EditorPanel) New() events.Handler {
 
 func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 	b := ep.current.buffer
-	if e.Key() != tcell.KeyRune  {
+	if e.Key() != tcell.KeyRune {
 		switch e.Key() {
 
 		case 0:
@@ -446,8 +446,9 @@ func (t *TextBox) SetCursor(where grid.LineCol) {
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
-		where := ep.current.where.LineMinus(ep.current.offset.vertical)
-		ep.textBox.SetCursor(where)
+		// log.Println("EditorPanel.SetCursor; offsets =", ep.current.offset)
+		// log.Println("EditorPanel.SetCursor; where   =", ep.current.where)
+		ep.textBox.SetCursor(ep.current.where.LineMinus(ep.current.offset.vertical))
 	} else {
 		where := ep.command.where
 		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
@@ -485,11 +486,16 @@ func main() {
 		ev := screen.TheScreen.PollEvent()
 
 		switch ev := ev.(type) {
-		case *tcell.EventMouse:	
-			if ev.Buttons() > 0 { eh.Mouse(ev) }
-		case *tcell.EventKey: eh.Key(ev)
-			if ev.Key() ==  tcell.KeyCtrlX { return }
-		case *tcell.EventResize: 
+		case *tcell.EventMouse:
+			if ev.Buttons() > 0 {
+				eh.Mouse(ev)
+			}
+		case *tcell.EventKey:
+			eh.Key(ev)
+			if ev.Key() == tcell.KeyCtrlX {
+				return
+			}
+		case *tcell.EventResize:
 			page = screen.NewTermboxCanvas()
 			eh.ResizeTo(page)
 		}
