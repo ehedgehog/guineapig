@@ -287,8 +287,13 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
-		ep.current.where = grid.LineCol{y - 1, x - 1}
 		ep.current = &ep.main
+		ep.current.where = grid.LineCol{y - 1, x - 1}
+
+		// hack to adjust beteen buffer & cancas coordinates.
+		ep.current.where.Line -= 1
+		ep.current.where.Col -= 6
+
 	} else if x >= delta && y == 0 {
 		ep.command.where = grid.LineCol{0, x - delta}
 		ep.current = &ep.command
@@ -409,13 +414,25 @@ func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox
 	sub := screen.NewSubCanvas(outer, dx, dy, w, h)
 	lineInfo := screen.NewSubCanvas(sub, 0, 0, tryTagSize, h)
 	page := screen.NewSubCanvas(sub, tryTagSize, 0, w-tryTagSize, h)
-	return &TextBox{lineInfo: lineInfo, lineContent: page, Canvas: sub}
+	return &TextBox{lineInfo: lineInfo, lineContent: page, embedded: sub}
 }
 
 type TextBox struct {
-	screen.Canvas
+	embedded	screen.Canvas
 	lineInfo    screen.Canvas
 	lineContent screen.Canvas
+}
+
+func (tb *TextBox) Size() grid.Size {
+	return tb.embedded.Size()
+}
+
+func (s *TextBox) SetCell(where grid.LineCol, glyph rune, st tcell.Style) {
+	if where.Col < tryTagSize {
+		s.lineInfo.SetCell(where, glyph, st)
+	} else {
+		s.lineContent.SetCell(where.ColPlus(-tryTagSize), glyph, st)
+	}
 }
 
 var markStyle = screen.DefaultStyle.Background(tcell.ColorYellow)
