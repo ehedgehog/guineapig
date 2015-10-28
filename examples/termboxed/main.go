@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 )
@@ -20,36 +19,15 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 import "github.com/ehedgehog/guineapig/examples/termboxed/edit"
 
 type EditorPanel struct {
-	topBar    *Panel
-	bottomBar *Panel
-	leftBar   *Panel
-	rightBar  *Panel
-	textBox   *Panel
+	topBar    *edit.Panel
+	bottomBar *edit.Panel
+	leftBar   *edit.Panel
+	rightBar  *edit.Panel
+	textBox   *edit.Panel
 
 	current *edit.State
 	main    edit.State
 	command edit.State
-}
-
-type Panel struct {
-	canvas screen.Canvas
-	paint  func(*Panel)
-}
-
-func (p *Panel) SetCursor(where grid.LineCol) {
-	p.canvas.SetCursor(where)
-}
-
-func (p *Panel) Size() grid.Size {
-	return p.canvas.Size()
-}
-
-func (p *Panel) Paint() {
-	if p.paint == nil {
-		log.Println("Paint -- no paint function provided.")
-	} else {
-		p.paint(p)
-	}
 }
 
 func (ep *EditorPanel) Geometry() grid.Geometry {
@@ -314,8 +292,8 @@ func (ep *EditorPanel) Paint() error {
 
 const delta = 5
 
-func textPainterFor(tb *TextBox, s *edit.State) func(*Panel) {
-	return func(p *Panel) {
+func textPainterFor(tb *TextBox, s *edit.State) func(*edit.Panel) {
+	return func(p *edit.Panel) {
 		h := tb.lineInfo.Size().Height
 		v := s.Offset.Vertical
 		s.Buffer.PutLines(tb.lineContent, v, h)
@@ -340,18 +318,18 @@ func textPainterFor(tb *TextBox, s *edit.State) func(*Panel) {
 	}
 }
 
-func rightPainterFor(s *edit.State) func(*Panel) {
-	return func(p *Panel) {
+func rightPainterFor(s *edit.State) func(*edit.Panel) {
+	return func(p *edit.Panel) {
 		b := s.Buffer
 		content := b.Expose()
 		line := s.Where.Line
 		length := bounds.Max(line, len(content))
-		draw.Scrollbar(p.canvas, draw.ScrollInfo{length, line})
+		draw.Scrollbar(p.Canvas, draw.ScrollInfo{length, line})
 	}
 }
 
-func bottomPainter(p *Panel) {
-	c := p.canvas
+func bottomPainter(p *edit.Panel) {
+	c := p.Canvas
 	w := c.Size().Width
 	c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_bl, screen.DefaultStyle)
 	for i := 1; i < w; i += 1 {
@@ -360,9 +338,9 @@ func bottomPainter(p *Panel) {
 	c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
 }
 
-func topPainterFor(s *edit.State) func(*Panel) {
-	return func(p *Panel) {
-		c := p.canvas
+func topPainterFor(s *edit.State) func(*edit.Panel) {
+	return func(p *edit.Panel) {
+		c := p.Canvas
 		w := c.Size().Width
 		c.SetCell(grid.LineCol{Col: 0, Line: 0}, draw.Glyph_corner_tl, screen.DefaultStyle)
 		for i := 1; i < w; i += 1 {
@@ -375,8 +353,8 @@ func topPainterFor(s *edit.State) func(*Panel) {
 	}
 }
 
-func leftPainter(p *Panel) {
-	c := p.canvas
+func leftPainter(p *edit.Panel) {
+	c := p.Canvas
 	h := c.Size().Height
 	for j := 0; j < h; j += 1 {
 		c.SetCell(grid.LineCol{Col: 0, Line: j}, draw.Glyph_vbar, screen.DefaultStyle)
@@ -387,13 +365,13 @@ func (ep *EditorPanel) ResizeTo(outer screen.Canvas) error {
 	size := outer.Size()
 	w, h := size.Width, size.Height
 
-	ep.leftBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 1, 1, h-2), paint: leftPainter}
-	ep.rightBar = &Panel{canvas: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), paint: rightPainterFor(&ep.main)}
-	ep.topBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, 0, w, 1), paint: topPainterFor(&ep.command)}
-	ep.bottomBar = &Panel{canvas: screen.NewSubCanvas(outer, 0, h-1, w, 1), paint: bottomPainter}
+	ep.leftBar = &edit.Panel{Canvas: screen.NewSubCanvas(outer, 0, 1, 1, h-2), PaintFunc: leftPainter}
+	ep.rightBar = &edit.Panel{Canvas: screen.NewSubCanvas(outer, w-1, 1, 1, h-2), PaintFunc: rightPainterFor(&ep.main)}
+	ep.topBar = &edit.Panel{Canvas: screen.NewSubCanvas(outer, 0, 0, w, 1), PaintFunc: topPainterFor(&ep.command)}
+	ep.bottomBar = &edit.Panel{Canvas: screen.NewSubCanvas(outer, 0, h-1, w, 1), PaintFunc: bottomPainter}
 
 	textBox := NewTextBox(ep, outer, 1, 1, w-2, h-2)
-	ep.textBox = &Panel{canvas: textBox, paint: textPainterFor(textBox, &ep.main)}
+	ep.textBox = &edit.Panel{Canvas: textBox, PaintFunc: textPainterFor(textBox, &ep.main)}
 	return nil
 }
 
