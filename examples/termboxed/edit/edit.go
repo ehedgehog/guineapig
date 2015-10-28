@@ -327,7 +327,7 @@ func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 		if s.Marked.IsActive() {
 			first, last := s.Marked.Range()
 			for line := first - v; line < last-v+1; line += 1 {
-				tb.lineInfo.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
+				tb.lineInfo.SetCell(grid.LineCol{line, tryTagSize - 1}, '║', markStyle)
 			}
 		}
 
@@ -428,7 +428,7 @@ func (s *TextBox) SetCell(where grid.LineCol, glyph rune, st tcell.Style) {
 	}
 }
 
-var markStyle = screen.DefaultStyle.Background(tcell.ColorYellow)
+var markStyle = screen.DefaultStyle.Foreground(tcell.ColorBrightRed)
 
 var hereStyle = screen.DefaultStyle.Foreground(tcell.ColorRed)
 
@@ -439,8 +439,6 @@ func (t *TextBox) SetCursor(where grid.LineCol) {
 
 func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
-		// log.Println("EditorPanel.SetCursor; offsets =", ep.current.offset)
-		// log.Println("EditorPanel.SetCursor; where   =", ep.current.where)
 		ep.textBox.SetCursor(ep.current.Where.LineMinus(ep.current.Offset.Vertical))
 	} else {
 		where := ep.command.Where
