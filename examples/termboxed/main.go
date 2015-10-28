@@ -18,16 +18,11 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 import "github.com/ehedgehog/guineapig/examples/termboxed/layouts"
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 
-type Offset struct {
-	vertical   int
-	horizontal int
-}
-
 type State struct {
 	where  grid.LineCol
 	buffer text.Buffer
 	marked grid.MarkedRange
-	offset Offset
+	offset grid.Offset
 }
 
 type EditorPanel struct {
@@ -194,7 +189,7 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 
 		case tcell.KeyPgUp:
 			where := ep.current.where
-			vo := ep.current.offset.vertical
+			vo := ep.current.offset.Vertical
 			if where.Line-vo == 0 {
 				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
 				ep.current.where = grid.LineCol{top, where.Col}
@@ -204,7 +199,7 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 
 		case tcell.KeyPgDn:
 			where := ep.current.where
-			vo := ep.current.offset.vertical
+			vo := ep.current.offset.Vertical
 			height := ep.textBox.Size().Height
 			if where.Line-vo == height-1 {
 				// forward one page
@@ -291,7 +286,7 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 
 		// hack to adjust beteen buffer & cancas coordinates.
 		ep.current.where.Line -= 1
-		ep.current.where.Line += ep.current.offset.vertical
+		ep.current.where.Line += ep.current.offset.Vertical
 		ep.current.where.Col -= 6
 
 	} else if x >= delta && y == 0 {
@@ -305,11 +300,11 @@ func (ep *EditorPanel) AdjustScrolling() {
 	size := ep.textBox.Size()
 	line := ep.current.where.Line
 	h := size.Height
-	if line < ep.current.offset.vertical {
-		ep.current.offset.vertical = line
+	if line < ep.current.offset.Vertical {
+		ep.current.offset.Vertical = line
 	}
-	if line > ep.current.offset.vertical+h-1 {
-		ep.current.offset.vertical = line - h + 1
+	if line > ep.current.offset.Vertical+h-1 {
+		ep.current.offset.Vertical = line - h + 1
 	}
 }
 
@@ -328,7 +323,7 @@ const delta = 5
 func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	return func(p *Panel) {
 		h := tb.lineInfo.Size().Height
-		v := s.offset.vertical
+		v := s.offset.Vertical
 		s.buffer.PutLines(tb.lineContent, v, h)
 
 		if s.marked.IsActive() {
@@ -448,7 +443,7 @@ func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
 		// log.Println("EditorPanel.SetCursor; offsets =", ep.current.offset)
 		// log.Println("EditorPanel.SetCursor; where   =", ep.current.where)
-		ep.textBox.SetCursor(ep.current.where.LineMinus(ep.current.offset.vertical))
+		ep.textBox.SetCursor(ep.current.where.LineMinus(ep.current.offset.Vertical))
 	} else {
 		where := ep.command.where
 		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
