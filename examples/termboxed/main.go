@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	//	"strconv"
 	"strings"
 )
 
@@ -292,6 +291,7 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 
 		// hack to adjust beteen buffer & cancas coordinates.
 		ep.current.where.Line -= 1
+		ep.current.where.Line += ep.current.offset.vertical
 		ep.current.where.Col -= 6
 
 	} else if x >= delta && y == 0 {
@@ -418,7 +418,7 @@ func NewTextBox(ep *EditorPanel, outer screen.Canvas, dx, dy, w, h int) *TextBox
 }
 
 type TextBox struct {
-	embedded	screen.Canvas
+	embedded    screen.Canvas
 	lineInfo    screen.Canvas
 	lineContent screen.Canvas
 }
