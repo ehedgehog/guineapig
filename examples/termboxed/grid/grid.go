@@ -59,3 +59,8 @@ type Size struct {
 	Width  int
 	Height int
 }
+
+type Offset struct {
+	Vertical   int
+	Horizontal int
+}
