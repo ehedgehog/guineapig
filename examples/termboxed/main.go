@@ -17,13 +17,7 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
 import "github.com/ehedgehog/guineapig/examples/termboxed/layouts"
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
-
-type State struct {
-	Where  grid.LineCol
-	Buffer text.Buffer
-	Marked grid.MarkedRange
-	Offset grid.Offset
-}
+import "github.com/ehedgehog/guineapig/examples/termboxed/edit"
 
 type EditorPanel struct {
 	topBar    *Panel
@@ -32,9 +26,9 @@ type EditorPanel struct {
 	rightBar  *Panel
 	textBox   *Panel
 
-	current *State
-	main    State
-	command State
+	current *edit.State
+	main    edit.State
+	command edit.State
 }
 
 type Panel struct {
@@ -125,9 +119,9 @@ func NewEditorPanel() events.Handler {
 	mb := text.NewBuffer(func(b text.Buffer, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
-		main: State{Buffer: mb},
+		main: edit.State{Buffer: mb},
 
-		command: State{Buffer: text.NewBuffer(func(b text.Buffer, s string) error {
+		command: edit.State{Buffer: text.NewBuffer(func(b text.Buffer, s string) error {
 			content := b.Expose()
 			line := ep.command.Where.Line
 			blobs := strings.Split(content[line], " ")
@@ -320,7 +314,7 @@ func (ep *EditorPanel) Paint() error {
 
 const delta = 5
 
-func textPainterFor(tb *TextBox, s *State) func(*Panel) {
+func textPainterFor(tb *TextBox, s *edit.State) func(*Panel) {
 	return func(p *Panel) {
 		h := tb.lineInfo.Size().Height
 		v := s.Offset.Vertical
@@ -346,7 +340,7 @@ func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	}
 }
 
-func rightPainterFor(s *State) func(*Panel) {
+func rightPainterFor(s *edit.State) func(*Panel) {
 	return func(p *Panel) {
 		b := s.Buffer
 		content := b.Expose()
@@ -366,7 +360,7 @@ func bottomPainter(p *Panel) {
 	c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_br, screen.DefaultStyle)
 }
 
-func topPainterFor(s *State) func(*Panel) {
+func topPainterFor(s *edit.State) func(*Panel) {
 	return func(p *Panel) {
 		c := p.canvas
 		w := c.Size().Width
