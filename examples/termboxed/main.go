@@ -19,10 +19,10 @@ import "github.com/ehedgehog/guineapig/examples/termboxed/layouts"
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 
 type State struct {
-	where  grid.LineCol
-	buffer text.Buffer
-	marked grid.MarkedRange
-	offset grid.Offset
+	Where  grid.LineCol
+	Buffer text.Buffer
+	Marked grid.MarkedRange
+	Offset grid.Offset
 }
 
 type EditorPanel struct {
@@ -72,48 +72,48 @@ func readIntoBuffer(ep *EditorPanel, b text.Buffer, fileName string) error {
 		return err
 	}
 	defer f.Close()
-	w, err := b.ReadFromFile(ep.main.where, fileName, f)
-	ep.main.where = w
+	w, err := b.ReadFromFile(ep.main.Where, fileName, f)
+	ep.main.Where = w
 	return err
 }
 
 var commands = map[string]func(*EditorPanel, []string) error{
 	"r": func(ep *EditorPanel, blobs []string) error {
-		b := ep.main.buffer
+		b := ep.main.Buffer
 		return readIntoBuffer(ep, b, blobs[1])
 	},
 	"mr": func(ep *EditorPanel, blobs []string) error {
-		b := ep.main.buffer
-		if ep.main.marked.IsActive() {
-			target := ep.main.where.Line
-			first, last := ep.main.marked.Range()
+		b := ep.main.Buffer
+		if ep.main.Marked.IsActive() {
+			target := ep.main.Where.Line
+			first, last := ep.main.Marked.Range()
 			if first <= target && target <= last {
 				return errors.New("range overlaps target")
 			}
-			b.MoveLines(ep.main.where, first, last)
-			ep.main.where.Line = ep.main.marked.MoveAfter(target)
+			b.MoveLines(ep.main.Where, first, last)
+			ep.main.Where.Line = ep.main.Marked.MoveAfter(target)
 			return nil
 		} else {
 			return errors.New("no marked range")
 		}
 	},
 	"w": func(ep *EditorPanel, blobs []string) error {
-		b := ep.main.buffer
+		b := ep.main.Buffer
 		return b.WriteToFile(blobs[1:])
 	},
 	"d": func(ep *EditorPanel, blobs []string) error {
-		b := ep.main.buffer
-		lineNumber := ep.main.where.Line
-		b.DeleteLine(ep.main.where)
-		ep.main.marked.RemoveLine(lineNumber)
+		b := ep.main.Buffer
+		lineNumber := ep.main.Where.Line
+		b.DeleteLine(ep.main.Where)
+		ep.main.Marked.RemoveLine(lineNumber)
 		return nil
 	},
 	"dr": func(ep *EditorPanel, blobs []string) error {
-		if ep.main.marked.IsActive() {
-			b := ep.main.buffer
-			first, last := ep.main.marked.Range()
-			ep.current.where = b.DeleteLines(ep.current.where, first, last)
-			ep.main.marked.Clear()
+		if ep.main.Marked.IsActive() {
+			b := ep.main.Buffer
+			first, last := ep.main.Marked.Range()
+			ep.current.Where = b.DeleteLines(ep.current.Where, first, last)
+			ep.main.Marked.Clear()
 			return nil
 		} else {
 			return errors.New("no marked range")
@@ -125,11 +125,11 @@ func NewEditorPanel() events.Handler {
 	mb := text.NewBuffer(func(b text.Buffer, s string) error { return nil })
 	var ep *EditorPanel
 	ep = &EditorPanel{
-		main: State{buffer: mb},
+		main: State{Buffer: mb},
 
-		command: State{buffer: text.NewBuffer(func(b text.Buffer, s string) error {
+		command: State{Buffer: text.NewBuffer(func(b text.Buffer, s string) error {
 			content := b.Expose()
-			line := ep.command.where.Line
+			line := ep.command.Where.Line
 			blobs := strings.Split(content[line], " ")
 			command := commands[blobs[0]]
 			if command == nil {
@@ -149,7 +149,7 @@ func (ep *EditorPanel) New() events.Handler {
 }
 
 func (ep *EditorPanel) Key(e *tcell.EventKey) error {
-	b := ep.current.buffer
+	b := ep.current.Buffer
 	if e.Key() != tcell.KeyRune {
 		switch e.Key() {
 
@@ -158,11 +158,11 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 
 		case tcell.KeyF1:
 			ep.current = &ep.command
-			ep.command.buffer.Return(ep.command.where)
-			ep.current.where = grid.LineCol{Line: ep.command.where.Line + 1, Col: 0}
+			ep.command.Buffer.Return(ep.command.Where)
+			ep.current.Where = grid.LineCol{Line: ep.command.Where.Line + 1, Col: 0}
 
 		case tcell.KeyF2:
-			ep.command.where, _ = ep.command.buffer.Execute(ep.command.where)
+			ep.command.Where, _ = ep.command.Buffer.Execute(ep.command.Where)
 
 		case tcell.KeyCtrlB:
 			if ep.current == &ep.main {
@@ -172,61 +172,61 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 			}
 
 		case tcell.KeySpace:
-			b.Insert(ep.current.where, ' ')
-			ep.current.where.RightOne()
+			b.Insert(ep.current.Where, ' ')
+			ep.current.Where.RightOne()
 
 		case tcell.KeyBackspace2:
-			ep.current.where = b.DeleteBack(ep.current.where)
+			ep.current.Where = b.DeleteBack(ep.current.Where)
 
 		case tcell.KeyDelete:
-			ep.current.where = b.DeleteForward(ep.current.where)
+			ep.current.Where = b.DeleteForward(ep.current.Where)
 
 		case tcell.KeyF3:
-			ep.main.marked.SetLow(ep.main.where.Line)
+			ep.main.Marked.SetLow(ep.main.Where.Line)
 
 		case tcell.KeyF4:
-			ep.main.marked.SetHigh(ep.main.where.Line)
+			ep.main.Marked.SetHigh(ep.main.Where.Line)
 
 		case tcell.KeyPgUp:
-			where := ep.current.where
-			vo := ep.current.offset.Vertical
+			where := ep.current.Where
+			vo := ep.current.Offset.Vertical
 			if where.Line-vo == 0 {
 				top := bounds.Max(0, where.Line-ep.textBox.Size().Height)
-				ep.current.where = grid.LineCol{top, where.Col}
+				ep.current.Where = grid.LineCol{top, where.Col}
 			} else {
-				ep.current.where = grid.LineCol{vo, where.Col}
+				ep.current.Where = grid.LineCol{vo, where.Col}
 			}
 
 		case tcell.KeyPgDn:
-			where := ep.current.where
-			vo := ep.current.offset.Vertical
+			where := ep.current.Where
+			vo := ep.current.Offset.Vertical
 			height := ep.textBox.Size().Height
 			if where.Line-vo == height-1 {
 				// forward one page
 				bot := where.Line + height
-				ep.current.where = grid.LineCol{bot, where.Col}
+				ep.current.Where = grid.LineCol{bot, where.Col}
 			} else {
 				// bottom of this page
-				ep.current.where = grid.LineCol{vo + height - 1, where.Col}
+				ep.current.Where = grid.LineCol{vo + height - 1, where.Col}
 			}
 
 		case tcell.KeyEnd:
-			where := ep.current.where
+			where := ep.current.Where
 			if where.Col == 0 {
 				contents := b.Expose()
-				line := contents[ep.current.where.Line]
+				line := contents[ep.current.Where.Line]
 				where.Col = len(line)
 			} else {
 				where.Col = 0
 			}
-			ep.current.where = where
+			ep.current.Where = where
 
 		case tcell.KeyEnter:
 			if ep.current == &ep.main {
-				ep.current.where = b.Return(ep.current.where)
-				ep.main.marked.Return(ep.current.where.Line)
+				ep.current.Where = b.Return(ep.current.Where)
+				ep.main.Marked.Return(ep.current.Where.Line)
 			} else {
-				_, err := b.Execute(ep.current.where)
+				_, err := b.Execute(ep.current.Where)
 				if err == nil {
 					report(ep, b, "OK")
 				} else {
@@ -236,44 +236,44 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 			}
 
 		case tcell.KeyRight:
-			ep.current.where.RightOne()
+			ep.current.Where.RightOne()
 
 		case tcell.KeyUp:
-			ep.current.where.UpOne()
+			ep.current.Where.UpOne()
 
 		case tcell.KeyDown:
-			ep.current.where.DownOne()
+			ep.current.Where.DownOne()
 
 		case tcell.KeyLeft:
-			ep.current.where.LeftOne()
+			ep.current.Where.LeftOne()
 
 		default:
 			report := fmt.Sprintf("<key: %#d>\n", uint(e.Key()))
 			for _, ch := range report {
-				b.Insert(ep.current.where, rune(ch))
-				ep.current.where.RightOne()
+				b.Insert(ep.current.Where, rune(ch))
+				ep.current.Where.RightOne()
 			}
 		}
 	} else {
-		b.Insert(ep.current.where, e.Rune())
-		ep.current.where.RightOne()
+		b.Insert(ep.current.Where, e.Rune())
+		ep.current.Where.RightOne()
 	}
 	return nil
 }
 
 func report(ep *EditorPanel, b text.Buffer, message string) {
-	b.Insert(ep.current.where, ' ')
-	ep.current.where.RightOne()
-	b.Insert(ep.current.where, '(')
-	ep.current.where.RightOne()
+	b.Insert(ep.current.Where, ' ')
+	ep.current.Where.RightOne()
+	b.Insert(ep.current.Where, '(')
+	ep.current.Where.RightOne()
 	for _, rune := range message {
-		b.Insert(ep.current.where, rune)
-		ep.current.where.RightOne()
+		b.Insert(ep.current.Where, rune)
+		ep.current.Where.RightOne()
 	}
-	b.Insert(ep.current.where, ')')
-	ep.current.where.RightOne()
-	b.Insert(ep.current.where, ' ')
-	ep.current.where.RightOne()
+	b.Insert(ep.current.Where, ')')
+	ep.current.Where.RightOne()
+	b.Insert(ep.current.Where, ' ')
+	ep.current.Where.RightOne()
 }
 
 func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
@@ -282,15 +282,15 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 	w, h := size.Width, size.Height
 	if 0 < x && x < w+1 && 0 < y && y < h+1 {
 		ep.current = &ep.main
-		ep.current.where = grid.LineCol{y - 1, x - 1}
+		ep.current.Where = grid.LineCol{y - 1, x - 1}
 
 		// hack to adjust beteen buffer & cancas coordinates.
-		ep.current.where.Line -= 1
-		ep.current.where.Line += ep.current.offset.Vertical
-		ep.current.where.Col -= 6
+		ep.current.Where.Line -= 1
+		ep.current.Where.Line += ep.current.Offset.Vertical
+		ep.current.Where.Col -= 6
 
 	} else if x >= delta && y == 0 {
-		ep.command.where = grid.LineCol{0, x - delta}
+		ep.command.Where = grid.LineCol{0, x - delta}
 		ep.current = &ep.command
 	}
 	return nil
@@ -298,13 +298,13 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 
 func (ep *EditorPanel) AdjustScrolling() {
 	size := ep.textBox.Size()
-	line := ep.current.where.Line
+	line := ep.current.Where.Line
 	h := size.Height
-	if line < ep.current.offset.Vertical {
-		ep.current.offset.Vertical = line
+	if line < ep.current.Offset.Vertical {
+		ep.current.Offset.Vertical = line
 	}
-	if line > ep.current.offset.Vertical+h-1 {
-		ep.current.offset.Vertical = line - h + 1
+	if line > ep.current.Offset.Vertical+h-1 {
+		ep.current.Offset.Vertical = line - h + 1
 	}
 }
 
@@ -323,11 +323,11 @@ const delta = 5
 func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	return func(p *Panel) {
 		h := tb.lineInfo.Size().Height
-		v := s.offset.Vertical
-		s.buffer.PutLines(tb.lineContent, v, h)
+		v := s.Offset.Vertical
+		s.Buffer.PutLines(tb.lineContent, v, h)
 
-		if s.marked.IsActive() {
-			first, last := s.marked.Range()
+		if s.Marked.IsActive() {
+			first, last := s.Marked.Range()
 			for line := first - v; line < last-v+1; line += 1 {
 				tb.lineInfo.SetCell(grid.LineCol{line, tryTagSize - 1}, ' ', markStyle)
 			}
@@ -348,9 +348,9 @@ func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 
 func rightPainterFor(s *State) func(*Panel) {
 	return func(p *Panel) {
-		b := s.buffer
+		b := s.Buffer
 		content := b.Expose()
-		line := s.where.Line
+		line := s.Where.Line
 		length := bounds.Max(line, len(content))
 		draw.Scrollbar(p.canvas, draw.ScrollInfo{length, line})
 	}
@@ -376,8 +376,8 @@ func topPainterFor(s *State) func(*Panel) {
 		}
 		screen.PutString(c, 2, 0, "─┤ ", screen.DefaultStyle)
 		c.SetCell(grid.LineCol{Col: w - 1, Line: 0}, draw.Glyph_corner_tr, screen.DefaultStyle)
-		tline := s.where.Line
-		s.buffer.PutLines(screen.NewSubCanvas(c, delta, 0, w-delta-2, 1), tline, 1)
+		tline := s.Where.Line
+		s.Buffer.PutLines(screen.NewSubCanvas(c, delta, 0, w-delta-2, 1), tline, 1)
 	}
 }
 
@@ -443,9 +443,9 @@ func (ep *EditorPanel) SetCursor() error {
 	if ep.current == &ep.main {
 		// log.Println("EditorPanel.SetCursor; offsets =", ep.current.offset)
 		// log.Println("EditorPanel.SetCursor; where   =", ep.current.where)
-		ep.textBox.SetCursor(ep.current.where.LineMinus(ep.current.offset.Vertical))
+		ep.textBox.SetCursor(ep.current.Where.LineMinus(ep.current.Offset.Vertical))
 	} else {
-		where := ep.command.where
+		where := ep.command.Where
 		ep.topBar.SetCursor(grid.LineCol{0, where.Col + delta})
 	}
 	return nil
