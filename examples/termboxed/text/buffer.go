@@ -223,7 +223,7 @@ func (b *SimpleBuffer) DeleteForward(where grid.LineCol) grid.LineCol {
 func (b *SimpleBuffer) PutLines(w screen.Canvas, first, n int) {
 	content := b.content
 	row := 0
-	for line := first; line < len(content) && row < n; line += 1 {
+	for line := first; 0 <= line && line < len(content) && row < n; line += 1 {
 		screen.PutString(w, 0, row, content[line], screen.DefaultStyle)
 		row += 1
 	}

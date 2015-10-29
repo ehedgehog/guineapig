@@ -1,6 +1,10 @@
 package main
 
-import "github.com/gdamore/tcell"
+import (
+	"log"
+
+	"github.com/gdamore/tcell"
+)
 
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 
@@ -34,6 +38,8 @@ func main() {
 		switch ev := ev.(type) {
 		case *tcell.EventMouse:
 			if ev.Buttons() > 0 {
+				x, y := ev.Position()
+				log.Println("EventMouse", x, y)
 				eh.Mouse(ev)
 			}
 		case *tcell.EventKey:

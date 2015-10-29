@@ -278,7 +278,9 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 	x, y := e.Position()
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
-	if 0 < x && x < w+1 && 0 < y && y < h+1 {
+	log.Println("EditorPanel", "xy:", x, y, "wh:", w, h)
+	if 0 < x && x < w+1 && 1 < y && y < h+2 {
+		log.Println("  main")
 		ep.current = &ep.main
 		ep.current.Where = grid.LineCol{y - 1, x - 1}
 
@@ -287,7 +289,8 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 		ep.current.Where.Line += ep.current.Offset.Vertical
 		ep.current.Where.Col -= 6
 
-	} else if x >= delta && y == 0 {
+	} else if x >= delta && y == 1 {
+		log.Println("  command")
 		ep.command.Where = grid.LineCol{0, x - delta}
 		ep.current = &ep.command
 	}
@@ -322,6 +325,9 @@ func textPainterFor(tb *TextBox, s *State) func(*Panel) {
 	return func(p *Panel) {
 		h := tb.lineInfo.Size().Height
 		v := s.Offset.Vertical
+		if v < 0 {
+			v = 0
+		}
 		s.Buffer.PutLines(tb.lineContent, v, h)
 
 		if s.Marked.IsActive() {

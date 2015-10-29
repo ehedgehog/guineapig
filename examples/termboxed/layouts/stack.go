@@ -1,6 +1,10 @@
 package layouts
 
-import "github.com/gdamore/tcell"
+import (
+	"log"
+
+	"github.com/gdamore/tcell"
+)
 import "github.com/ehedgehog/guineapig/examples/termboxed/events"
 import "github.com/ehedgehog/guineapig/examples/termboxed/screen"
 import "github.com/ehedgehog/guineapig/examples/termboxed/grid"
@@ -48,6 +52,8 @@ func (b *Stack) Key(e *tcell.EventKey) error {
 }
 
 func (s *Stack) Mouse(e *tcell.EventMouse) error {
+	a, b := e.Position()
+	log.Println("Stack.Shelf", a, b)
 	y := 0
 	for i, h := range s.bounds {
 		nextY := y + h
