@@ -15,9 +15,9 @@ type Canvas interface {
 
 var DefaultStyle tcell.Style
 
-var StyleBackCyan = DefaultStyle.Background(tcell.ColorCyan)
+var StyleBackCyan = DefaultStyle.Background(tcell.ColorDarkCyan)
 
-var StyleBackYellow = DefaultStyle.Background(tcell.ColorCyan)
+var StyleBackYellow = DefaultStyle.Background(tcell.ColorDarkCyan)
 
 func PutString(c Canvas, x, y int, content string, s tcell.Style) {
 	i := 0
@@ -31,9 +31,9 @@ func PutString(c Canvas, x, y int, content string, s tcell.Style) {
 		}
 		// sprime.fg += 1
 		scurrent := s
-//		if i&1 == 0 {
-//			scurrent = &sprime
-//		}
+		//		if i&1 == 0 {
+		//			scurrent = &sprime
+		//		}
 		c.SetCell(grid.LineCol{Col: x + i, Line: y}, ch, scurrent)
 		i += 1
 	}

@@ -278,9 +278,9 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 	x, y := e.Position()
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
-	log.Println("EditorPanel", "xy:", x, y, "wh:", w, h)
+	// log.Println("EditorPanel", "xy:", x, y, "wh:", w, h)
 	if 0 < x && x < w+1 && 1 < y && y < h+2 {
-		log.Println("  main")
+		// log.Println("  main")
 		ep.current = &ep.main
 		ep.current.Where = grid.LineCol{y - 1, x - 1}
 
@@ -290,7 +290,7 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 		ep.current.Where.Col -= 6
 
 	} else if x >= delta && y == 1 {
-		log.Println("  command")
+		// log.Println("  command")
 		ep.command.Where = grid.LineCol{0, x - delta}
 		ep.current = &ep.command
 	}
@@ -434,7 +434,7 @@ func (s *TextBox) SetCell(where grid.LineCol, glyph rune, st tcell.Style) {
 	}
 }
 
-var markStyle = screen.DefaultStyle.Foreground(tcell.ColorBrightRed)
+var markStyle = screen.DefaultStyle.Foreground(tcell.ColorRed)
 
 var hereStyle = screen.DefaultStyle.Foreground(tcell.ColorRed)
 

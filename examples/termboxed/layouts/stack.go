@@ -1,7 +1,7 @@
 package layouts
 
 import (
-	"log"
+	// "log"
 
 	"github.com/gdamore/tcell"
 )
@@ -52,8 +52,8 @@ func (b *Stack) Key(e *tcell.EventKey) error {
 }
 
 func (s *Stack) Mouse(e *tcell.EventMouse) error {
-	a, b := e.Position()
-	log.Println("Stack.Shelf", a, b)
+	// a, b := e.Position()
+	// log.Println("Stack.Shelf", a, b)
 	y := 0
 	for i, h := range s.bounds {
 		nextY := y + h
