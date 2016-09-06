@@ -278,7 +278,9 @@ func (ep *EditorPanel) Mouse(e *tcell.EventMouse) error {
 	x, y := e.Position()
 	size := ep.textBox.Size()
 	w, h := size.Width, size.Height
-	log.Println("EditorPanel", "xy:", x, y, "wh:", w, h)
+	if false {
+		log.Println("EditorPanel", "xy:", x, y, "wh:", w, h)
+	}
 	if 0 < x && x < w+1 && 1 < y && y < h+2 {
 		log.Println("  main")
 		ep.current = &ep.main

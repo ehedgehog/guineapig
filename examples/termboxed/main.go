@@ -39,7 +39,7 @@ func main() {
 		case *tcell.EventMouse:
 			if ev.Buttons() > 0 {
 				x, y := ev.Position()
-				log.Println("EventMouse", x, y)
+				if false { log.Println("EventMouse", x, y) }
 				eh.Mouse(ev)
 			}
 		case *tcell.EventKey:
