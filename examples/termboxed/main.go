@@ -1,6 +1,8 @@
 package main
 
 import (
+	// "log"
+
 	"log"
 
 	"github.com/gdamore/tcell"
@@ -39,7 +41,9 @@ func main() {
 		case *tcell.EventMouse:
 			if ev.Buttons() > 0 {
 				x, y := ev.Position()
-				if false { log.Println("EventMouse", x, y) }
+				if false {
+					log.Println("EventMouse", x, y)
+				}
 				eh.Mouse(ev)
 			}
 		case *tcell.EventKey:
