@@ -15,9 +15,9 @@ type Canvas interface {
 
 var DefaultStyle tcell.Style
 
-var StyleBackCyan = DefaultStyle.Background(tcell.ColorCyan)
+var StyleBackCyan = DefaultStyle.Background(tcell.ColorLightCyan)
 
-var StyleBackYellow = DefaultStyle.Background(tcell.ColorCyan)
+var StyleBackYellow = DefaultStyle.Background(tcell.ColorLightCyan)
 
 func PutString(c Canvas, x, y int, content string, s tcell.Style) {
 	i := 0

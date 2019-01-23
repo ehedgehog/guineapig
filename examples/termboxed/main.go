@@ -1,3 +1,7 @@
+//
+// termboxed.main is a steering program for a text editor reminicient
+// of Poplog's ved but written in go as an exploratory tool.
+//
 package main
 
 import (
