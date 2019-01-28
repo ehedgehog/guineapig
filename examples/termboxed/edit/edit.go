@@ -28,6 +28,8 @@ type Panel struct {
 	PaintFunc func(*Panel)
 }
 
+var KeySpace = tcell.Key(' ')
+
 func (p *Panel) SetCursor(where grid.LineCol) {
 	p.Canvas.SetCursor(where)
 }
@@ -169,7 +171,7 @@ func (ep *EditorPanel) Key(e *tcell.EventKey) error {
 				ep.current = &ep.main
 			}
 
-		case tcell.KeySpace:
+		case KeySpace:
 			b.Insert(ep.current.Where, ' ')
 			ep.current.Where.RightOne()
 

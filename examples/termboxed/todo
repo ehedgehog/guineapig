@@ -1,5 +1,7 @@
 ;;; -- TODO ----------------------------------------------------
 
+use Go modules.
+
 buffer tests
 	buffer content tests
 	buffer reading tests
